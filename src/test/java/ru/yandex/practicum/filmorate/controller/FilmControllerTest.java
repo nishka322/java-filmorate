@@ -1,16 +1,15 @@
-package ru.yandex.practicum.filmorate;
+package ru.yandex.practicum.filmorate.controller;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
-import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.model.Film;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
-class FilmControllerTest {
+public class FilmControllerTest {
     private FilmController filmController;
 
     @BeforeEach
@@ -169,6 +168,59 @@ class FilmControllerTest {
         assertEquals(2, result2.getId());
         assertNotNull(result3);
         assertEquals(3, result3.getId());
+    }
+
+    @Test
+    void addFilmWithReleaseDateBeforeMinDate() {
+        Film film = createValidFilm("Old Film", "Very old film", LocalDate.of(1890, 1, 1), 90);
+
+        ResponseEntity<Object> response = filmController.addFilm(film);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertInstanceOf(Map.class, response.getBody());
+        Map<?, ?> errorResponse = (Map<?, ?>) response.getBody();
+        assertEquals("Дата релиза не может быть раньше 28 декабря 1895 года", errorResponse.get("error"));
+    }
+
+    @Test
+    void addFilmWithReleaseDateOneDayBeforeMinDate() {
+        Film film = createValidFilm("Too Early", "Before cinema", LocalDate.of(1895, 12, 27), 60);
+
+        ResponseEntity<Object> response = filmController.addFilm(film);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertInstanceOf(Map.class, response.getBody());
+        Map<?, ?> errorResponse = (Map<?, ?>) response.getBody();
+        assertEquals("Дата релиза не может быть раньше 28 декабря 1895 года", errorResponse.get("error"));
+    }
+
+    @Test
+    void updateFilmWithInvalidReleaseDate() {
+        Film validFilm = createValidFilm("Valid Film", "Test film", LocalDate.of(2000, 1, 1), 120);
+        filmController.addFilm(validFilm);
+
+        Film updatedFilm = createValidFilm("Updated Film", "Updated film", LocalDate.of(1890, 1, 1), 120);
+        updatedFilm.setId(1);
+
+        ResponseEntity<Object> response = filmController.updateFilm(updatedFilm);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertInstanceOf(Map.class, response.getBody());
+        Map<?, ?> errorResponse = (Map<?, ?>) response.getBody();
+        assertEquals("Дата релиза не может быть раньше 28 декабря 1895 года", errorResponse.get("error"));
+    }
+
+    @Test
+    void updateFilmWithNonExistentId() {
+        Film film = createValidFilm("Non Existent", "Test film", LocalDate.of(2000, 1, 1), 120);
+        film.setId(999);
+
+        ResponseEntity<Object> response = filmController.updateFilm(film);
+
+        assertEquals(404, response.getStatusCode().value());
+        assertInstanceOf(Map.class, response.getBody());
+        Map<?, ?> errorResponse = (Map<?, ?>) response.getBody();
+        assertEquals("Фильм с id 999 не найден", errorResponse.get("error"));
     }
 
     private Film createValidFilm(String name, String description, LocalDate releaseDate, int duration) {

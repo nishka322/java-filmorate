@@ -10,13 +10,11 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @RestController
 @RequestMapping("/films")
-public class FilmController {
+public class FilmController extends BaseController<Film> {
     private final List<Film> films = new ArrayList<>();
     private int nextId = 1;
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
@@ -24,9 +22,25 @@ public class FilmController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<Object> addFilm(@Valid @RequestBody Film film) {
+        return addEntity(film);
+    }
+
+    @PutMapping
+    public ResponseEntity<Object> updateFilm(@Valid @RequestBody Film film) {
+        return updateEntity(film);
+    }
+
+    @GetMapping
+    public List<Film> getAllFilms() {
+        log.info("Получен запрос на получение всех фильмов. Количество фильмов: {}", films.size());
+        return new ArrayList<>(films);
+    }
+
+    @Override
+    protected ResponseEntity<Object> addEntity(Film film) {
         log.info("Получен запрос на добавление фильма: {}", film);
         try {
-            validateFilmReleaseDate(film);
+            validateEntity(film);
             film.setId(nextId++);
             films.add(film);
             log.info("Фильм успешно добавлен: {}", film);
@@ -37,11 +51,11 @@ public class FilmController {
         }
     }
 
-    @PutMapping
-    public ResponseEntity<Object> updateFilm(@Valid @RequestBody Film film) {
+    @Override
+    protected ResponseEntity<Object> updateEntity(Film film) {
         log.info("Получен запрос на обновление фильма: {}", film);
         try {
-            validateFilmReleaseDate(film);
+            validateEntity(film);
             for (int i = 0; i < films.size(); i++) {
                 if (films.get(i).getId() == film.getId()) {
                     films.set(i, film);
@@ -57,23 +71,11 @@ public class FilmController {
         }
     }
 
-    @GetMapping
-    public List<Film> getAllFilms() {
-        log.info("Получен запрос на получение всех фильмов. Количество фильмов: {}", films.size());
-        return new ArrayList<>(films);
-    }
-
-    private void validateFilmReleaseDate(Film film) {
+    @Override
+    protected void validateEntity(Film film) throws ValidationException {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
-    }
-
-    private ResponseEntity<Object> createErrorResponse(String message, HttpStatus status) {
-        Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", message);
-        errorResponse.put("status", status.toString());
-        return ResponseEntity.status(status).body(errorResponse);
     }
 
     @ExceptionHandler(ValidationException.class)

@@ -9,20 +9,35 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @RestController
 @RequestMapping("/users")
-public class UserController {
+public class UserController extends BaseController<User> {
     private final List<User> users = new ArrayList<>();
     private int nextId = 1;
 
     @PostMapping
     public ResponseEntity<Object> createUser(@Valid @RequestBody User user) {
+        return addEntity(user);
+    }
+
+    @PutMapping
+    public ResponseEntity<Object> updateUser(@Valid @RequestBody User user) {
+        return updateEntity(user);
+    }
+
+    @GetMapping
+    public List<User> getAllUsers() {
+        log.info("Получен запрос на получение всех пользователей. Количество пользователей: {}", users.size());
+        return new ArrayList<>(users);
+    }
+
+    @Override
+    protected ResponseEntity<Object> addEntity(User user) {
         log.info("Получен запрос на создание пользователя: {}", user);
         try {
+            validateEntity(user);
             processUserName(user);
             user.setId(nextId++);
             users.add(user);
@@ -34,10 +49,11 @@ public class UserController {
         }
     }
 
-    @PutMapping
-    public ResponseEntity<Object> updateUser(@Valid @RequestBody User user) {
+    @Override
+    protected ResponseEntity<Object> updateEntity(User user) {
         log.info("Получен запрос на обновление пользователя: {}", user);
         try {
+            validateEntity(user);
             processUserName(user);
             for (int i = 0; i < users.size(); i++) {
                 if (users.get(i).getId() == user.getId()) {
@@ -54,10 +70,8 @@ public class UserController {
         }
     }
 
-    @GetMapping
-    public List<User> getAllUsers() {
-        log.info("Получен запрос на получение всех пользователей. Количество пользователей: {}", users.size());
-        return new ArrayList<>(users);
+    @Override
+    protected void validateEntity(User user) throws ValidationException {
     }
 
     private void processUserName(User user) {
@@ -65,13 +79,6 @@ public class UserController {
             user.setName(user.getLogin());
             log.debug("Имя пользователя пустое, установлен логин: {}", user.getLogin());
         }
-    }
-
-    private ResponseEntity<Object> createErrorResponse(String message, HttpStatus status) {
-        Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", message);
-        errorResponse.put("status", status.toString());
-        return ResponseEntity.status(status).body(errorResponse);
     }
 
     @ExceptionHandler(ValidationException.class)
