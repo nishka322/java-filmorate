@@ -16,6 +16,8 @@ public abstract class BaseController<T> {
     }
 
     protected abstract ResponseEntity<Object> addEntity(T entity);
+
     protected abstract ResponseEntity<Object> updateEntity(T entity);
+
     protected abstract void validateEntity(T entity) throws ValidationException;
 }
