@@ -74,6 +74,8 @@ public class FilmController extends BaseController<Film> {
     @Override
     protected void validateEntity(Film film) throws ValidationException {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
+            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}",
+                    film.getReleaseDate(), MIN_RELEASE_DATE);
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
     }

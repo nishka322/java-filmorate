@@ -72,6 +72,7 @@ public class UserController extends BaseController<User> {
 
     @Override
     protected void validateEntity(User user) throws ValidationException {
+        log.debug("Валидация пользователя: {}", user.getLogin());
     }
 
     private void processUserName(User user) {
