@@ -92,7 +92,7 @@ public class FilmController extends BaseController<Film> {
             validateEntity(film);
             Film createdFilm = filmService.createFilm(film);
             log.info("Фильм успешно добавлен: {}", createdFilm);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdFilm);
+            return ResponseEntity.ok(createdFilm);
         } catch (ValidationException e) {
             log.warn("Ошибка валидации при добавлении фильма: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);

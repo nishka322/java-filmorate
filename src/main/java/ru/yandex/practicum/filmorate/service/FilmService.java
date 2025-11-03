@@ -83,9 +83,8 @@ public class FilmService {
     public Film updateFilm(Film film) {
         log.debug("Обновление фильма с id {}", film.getId());
 
-        if (!filmStorage.exists(film.getId())) {
-            throw new IllegalArgumentException("Фильм с id " + film.getId() + " не найден");
-        }
+        Film existingFilm = filmStorage.getById(film.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Фильм с id " + film.getId() + " не найден"));
 
         if (film.getMpa() != null && film.getMpa().getId() > 0) {
             MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
