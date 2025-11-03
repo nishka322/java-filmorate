@@ -104,15 +104,12 @@ public class FilmController extends BaseController<Film> {
         log.info("Получен запрос на обновление фильма: {}", film);
         try {
             validateEntity(film);
-
-            if (!filmService.filmExists(film.getId())) {
-                log.error("Фильм с id {} не найден для обновления", film.getId());
-                return createErrorResponse("Фильм с id " + film.getId() + " не найден", HttpStatus.NOT_FOUND);
-            }
-
             Film updatedFilm = filmService.updateFilm(film);
             log.info("Фильм успешно обновлен: {}", updatedFilm);
             return ResponseEntity.ok(updatedFilm);
+        } catch (IllegalArgumentException e) {
+            log.error("Фильм с id {} не найден для обновления", film.getId());
+            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         } catch (ValidationException e) {
             log.warn("Ошибка валидации при обновлении фильма: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
