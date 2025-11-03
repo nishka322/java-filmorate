@@ -60,14 +60,11 @@ public class FilmService {
 
     public Film createFilm(Film film) {
         log.debug("Создание нового фильма: {}", film.getName());
-
-        if (film.getMpa() == null || film.getMpa().getId() == 0) {
-            throw new IllegalArgumentException("MPA рейтинг обязателен");
+        if (film.getMpa() != null && film.getMpa().getId() > 0) {
+            MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
+            film.setMpa(mpa);
         }
-
-        MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
-        film.setMpa(mpa);
 
         if (film.getGenres() != null) {
             for (Genre genre : film.getGenres()) {
@@ -86,15 +83,15 @@ public class FilmService {
     public Film updateFilm(Film film) {
         log.debug("Обновление фильма с id {}", film.getId());
 
-        getFilmById(film.getId());
-
-        if (film.getMpa() == null || film.getMpa().getId() == 0) {
-            throw new IllegalArgumentException("MPA рейтинг обязателен");
+        if (!filmStorage.exists(film.getId())) {
+            throw new IllegalArgumentException("Фильм с id " + film.getId() + " не найден");
         }
 
-        MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
-        film.setMpa(mpa);
+        if (film.getMpa() != null && film.getMpa().getId() > 0) {
+            MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
+            film.setMpa(mpa);
+        }
 
         Film updatedFilm = filmStorage.update(film);
         log.info("Фильм '{}' (id: {}) обновлен", updatedFilm.getName(), updatedFilm.getId());
@@ -186,9 +183,13 @@ public class FilmService {
 
     private void loadFilmDetails(Film film) {
         if (filmStorage instanceof FilmDbStorage filmDbStorage) {
-            MpaRating mpa = filmDbStorage.loadFilmMpa(film.getId());
-            if (mpa != null) {
-                film.setMpa(mpa);
+            try {
+                MpaRating mpa = filmDbStorage.loadFilmMpa(film.getId());
+                if (mpa != null) {
+                    film.setMpa(mpa);
+                }
+            } catch (Exception e) {
+                log.debug("Не удалось загрузить MPA для фильма {}", film.getId());
             }
 
             List<Genre> genres = filmDbStorage.getFilmGenres(film.getId());
