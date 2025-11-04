@@ -1,80 +1,92 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage;
-import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
+import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@JdbcTest
+@Import({
+        FilmController.class,
+        FilmService.class,
+        UserService.class,
+        FilmDbStorage.class,
+        UserDbStorage.class,
+        MpaDbStorage.class,
+        GenreDbStorage.class
+})
 class FilmControllerTest {
+
+    @Autowired
     private FilmController filmController;
-    private FilmService filmService;
-    private UserService userService;
 
-    @BeforeEach
-    void setUp() {
-        InMemoryFilmStorage filmStorage = new InMemoryFilmStorage();
-        InMemoryUserStorage userStorage = new InMemoryUserStorage();
+    @Autowired
+    private FilmDbStorage filmStorage;
 
-        userService = new UserService(userStorage);
-        filmService = new FilmService(filmStorage, userService, null, null);
-        filmController = new FilmController(filmService);
-    }
+    @Autowired
+    private UserDbStorage userStorage;
 
     @Test
-    void addFilmValidData() {
+    public void addFilmValidData() {
         Film film = createValidFilm("Test Film", "Test Description", LocalDate.of(2000, 1, 1), 120);
         ResponseEntity<Object> response = filmController.addFilm(film);
 
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
         Film createdFilm = (Film) response.getBody();
-        assertEquals(1, createdFilm.getId());
         assertEquals("Test Film", createdFilm.getName());
     }
 
     @Test
-    void addFilmInvalidReleaseDate() {
+    public void addFilmInvalidReleaseDate() {
         Film film = createValidFilm("Old Film", "Very old film", LocalDate.of(1890, 1, 1), 90);
 
         ResponseEntity<Object> response = filmController.addFilm(film);
 
-        assertTrue(response.getStatusCode().is2xxSuccessful() || response.getStatusCode().is4xxClientError());
+        assertTrue(response.getStatusCode().is4xxClientError());
     }
 
     @Test
-    void updateFilmExistingFilm() {
+    public void updateFilmExistingFilm() {
         Film film = createValidFilm("Original", "Original desc", LocalDate.of(2000, 1, 1), 120);
-        filmController.addFilm(film);
+        ResponseEntity<Object> createResponse = filmController.addFilm(film);
+        Film createdFilm = (Film) createResponse.getBody();
 
         Film updatedFilm = createValidFilm("Updated", "Updated desc", LocalDate.of(2001, 1, 1), 150);
-        updatedFilm.setId(1);
+        assertNotNull(createdFilm);
+        updatedFilm.setId(createdFilm.getId());
 
         ResponseEntity<Object> response = filmController.updateFilm(updatedFilm);
 
         assertEquals(200, response.getStatusCode().value());
         Film resultFilm = (Film) response.getBody();
+        assertNotNull(resultFilm);
         assertEquals("Updated", resultFilm.getName());
     }
 
     @Test
-    void updateFilmNonExistingFilm() {
+    public void updateFilmNonExistingFilm() {
         Film film = createValidFilm("Non Existing", "Description", LocalDate.of(2000, 1, 1), 120);
         film.setId(999);
 
-        assertThrows(IllegalArgumentException.class, () -> filmController.updateFilm(film));
+        assertThrows(RuntimeException.class, () -> filmController.updateFilm(film));
     }
 
     @Test
-    void getAllFilmsEmptyList() {
+    public void getAllFilmsEmptyList() {
         List<Film> films = filmController.getAllFilms();
 
         assertNotNull(films);
@@ -82,7 +94,7 @@ class FilmControllerTest {
     }
 
     @Test
-    void getAllFilmsWithData() {
+    public void getAllFilmsWithData() {
         Film film1 = createValidFilm("Film 1", "Desc 1", LocalDate.of(2000, 1, 1), 120);
         Film film2 = createValidFilm("Film 2", "Desc 2", LocalDate.of(2001, 1, 1), 150);
 
@@ -95,7 +107,7 @@ class FilmControllerTest {
     }
 
     @Test
-    void addMultipleFilmsCheckIds() {
+    public void addMultipleFilmsCheckIds() {
         Film film1 = createValidFilm("Film 1", "Desc 1", LocalDate.of(2000, 1, 1), 120);
         Film film2 = createValidFilm("Film 2", "Desc 2", LocalDate.of(2001, 1, 1), 150);
         Film film3 = createValidFilm("Film 3", "Desc 3", LocalDate.of(2002, 1, 1), 180);
@@ -109,11 +121,11 @@ class FilmControllerTest {
         Film result3 = (Film) response3.getBody();
 
         assertNotNull(result1);
-        assertEquals(1, result1.getId());
         assertNotNull(result2);
-        assertEquals(2, result2.getId());
         assertNotNull(result3);
-        assertEquals(3, result3.getId());
+
+        assertNotEquals(result1.getId(), result2.getId());
+        assertNotEquals(result2.getId(), result3.getId());
     }
 
     private Film createValidFilm(String name, String description, LocalDate releaseDate, int duration) {

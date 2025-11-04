@@ -23,7 +23,7 @@ class UserDbStorageTest {
     private User testUser;
 
     @BeforeEach
-    void setUp() {
+    public void setUp() {
         testUser = new User();
         testUser.setEmail("test@mail.ru");
         testUser.setLogin("testlogin");
@@ -32,7 +32,7 @@ class UserDbStorageTest {
     }
 
     @Test
-    void testCreateUser() {
+    public void testCreateUser() {
         User createdUser = userStorage.create(testUser);
 
         assertThat(createdUser).isNotNull();
@@ -42,7 +42,7 @@ class UserDbStorageTest {
     }
 
     @Test
-    void testGetUserById() {
+    public void testGetUserById() {
         User createdUser = userStorage.create(testUser);
         Optional<User> foundUser = userStorage.getById(createdUser.getId());
 
@@ -51,7 +51,7 @@ class UserDbStorageTest {
     }
 
     @Test
-    void testGetAllUsers() {
+    public void testGetAllUsers() {
         userStorage.create(testUser);
 
         User anotherUser = new User();
@@ -69,7 +69,7 @@ class UserDbStorageTest {
     }
 
     @Test
-    void testUpdateUser() {
+    public void testUpdateUser() {
         User createdUser = userStorage.create(testUser);
 
         createdUser.setName("Updated Name");
@@ -86,7 +86,7 @@ class UserDbStorageTest {
     }
 
     @Test
-    void testUserExists() {
+    public void testUserExists() {
         User createdUser = userStorage.create(testUser);
 
         boolean exists = userStorage.exists(createdUser.getId());
@@ -97,7 +97,7 @@ class UserDbStorageTest {
     }
 
     @Test
-    void testDeleteUser() {
+    public void testDeleteUser() {
         User createdUser = userStorage.create(testUser);
 
         boolean existsBefore = userStorage.exists(createdUser.getId());

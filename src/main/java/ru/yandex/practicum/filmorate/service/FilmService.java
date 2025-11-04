@@ -3,7 +3,7 @@ package ru.yandex.practicum.filmorate.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -24,24 +24,24 @@ public class FilmService {
     private final MpaDbStorage mpaStorage;
     private final GenreDbStorage genreStorage;
     private static final Logger log = LoggerFactory.getLogger(FilmService.class);
+    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
+    public FilmService(FilmStorage filmStorage,
                        UserService userService,
                        MpaDbStorage mpaStorage,
-                       GenreDbStorage genreStorage) {
+                       GenreDbStorage genreStorage,
+                       JdbcTemplate jdbcTemplate) {
         this.filmStorage = filmStorage;
         this.userService = userService;
         this.mpaStorage = mpaStorage;
         this.genreStorage = genreStorage;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public List<Film> getAllFilms() {
         log.debug("Получение списка всех фильмов");
         List<Film> films = filmStorage.getAll();
-
-        films.forEach(this::loadFilmDetails);
-
         log.debug("Получено {} фильмов", films.size());
         return films;
     }
@@ -53,8 +53,6 @@ public class FilmService {
                     log.error("Фильм с id {} не найден", id);
                     return new IllegalArgumentException("Фильм с id " + id + " не найден");
                 });
-
-        loadFilmDetails(film);
         return film;
     }
 
@@ -101,18 +99,11 @@ public class FilmService {
         log.debug("Добавление лайка: пользователь {} ставит лайк фильму {}", userId, filmId);
 
         userService.getUserById(userId);
-        Film film = getFilmById(filmId);
+        getFilmById(filmId);
 
         if (filmStorage instanceof FilmDbStorage) {
             FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
             filmDbStorage.addLike(filmId, userId);
-        } else {
-            if (film.getLikes().contains(userId)) {
-                log.warn("Пользователь {} уже ставил лайк фильму {}", userId, filmId);
-                throw new IllegalArgumentException("Пользователь уже поставил лайк этому фильму");
-            }
-            film.getLikes().add(userId);
-            filmStorage.update(film);
         }
 
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
@@ -122,18 +113,11 @@ public class FilmService {
         log.debug("Удаление лайка: пользователь {} удаляет лайк с фильма {}", userId, filmId);
 
         userService.getUserById(userId);
-        Film film = getFilmById(filmId);
+        getFilmById(filmId);
 
         if (filmStorage instanceof FilmDbStorage) {
             FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
             filmDbStorage.removeLike(filmId, userId);
-        } else {
-            if (!film.getLikes().contains(userId)) {
-                log.warn("Пользователь {} не ставил лайк фильму {}", userId, filmId);
-                throw new IllegalArgumentException("Пользователь не ставил лайк этому фильму");
-            }
-            film.getLikes().remove(userId);
-            filmStorage.update(film);
         }
 
         log.info("Пользователь {} удалил лайк с фильма {}", userId, filmId);
@@ -142,15 +126,31 @@ public class FilmService {
     public List<Film> getPopularFilms(int count) {
         log.debug("Получение {} популярных фильмов", count);
 
-        List<Film> allFilms = getAllFilms();
+        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
+            String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
+                    "COUNT(l.user_id) AS likes_count " +
+                    "FROM films f " +
+                    "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
+                    "LEFT JOIN likes l ON f.id = l.film_id " +
+                    "GROUP BY f.id, m.id, m.name, m.description " +
+                    "ORDER BY likes_count DESC " +
+                    "LIMIT ?";
 
-        List<Film> popularFilms = allFilms.stream()
-                .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
-                .limit(count)
-                .collect(Collectors.toList());
+            List<Film> films = filmDbStorage.getJdbcTemplate().query(sql, (rs, rowNum) -> {
+                Film film = filmDbStorage.mapFilm(rs, rowNum);
+                return film;
+            }, count);
 
-        log.info("Возвращено {} популярных фильмов", popularFilms.size());
-        return popularFilms;
+            if (!films.isEmpty()) {
+                filmDbStorage.loadGenresForFilms(films);
+            }
+
+            log.info("Возвращено {} популярных фильмов", films.size());
+            return films;
+        }
+
+        log.warn("FilmStorage не является FilmDbStorage");
+        return List.of();
     }
 
     public boolean filmExists(int id) {
@@ -178,24 +178,5 @@ public class FilmService {
         log.debug("Получение жанра с id {}", id);
         return genreStorage.getGenreById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
-    }
-
-    private void loadFilmDetails(Film film) {
-        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
-            try {
-                MpaRating mpa = filmDbStorage.loadFilmMpa(film.getId());
-                if (mpa != null) {
-                    film.setMpa(mpa);
-                }
-            } catch (Exception e) {
-                log.debug("Не удалось загрузить MPA для фильма {}", film.getId());
-            }
-
-            List<Genre> genres = filmDbStorage.getFilmGenres(film.getId());
-            film.setGenres(new java.util.HashSet<>(genres));
-
-            List<Integer> likes = filmDbStorage.getLikes(film.getId());
-            film.setLikes(new java.util.HashSet<>(likes));
-        }
     }
 }

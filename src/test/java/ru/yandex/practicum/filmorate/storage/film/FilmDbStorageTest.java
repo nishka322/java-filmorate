@@ -25,7 +25,7 @@ class FilmDbStorageTest {
     private Film testFilm;
 
     @BeforeEach
-    void setUp() {
+    public void setUp() {
         testFilm = new Film();
         testFilm.setName("Test Film");
         testFilm.setDescription("Test Description");
@@ -38,7 +38,7 @@ class FilmDbStorageTest {
     }
 
     @Test
-    void testCreateFilm() {
+    public void testCreateFilm() {
         Film createdFilm = filmStorage.create(testFilm);
 
         assertThat(createdFilm).isNotNull();
@@ -48,7 +48,7 @@ class FilmDbStorageTest {
     }
 
     @Test
-    void testGetFilmById() {
+    public void testGetFilmById() {
         Film createdFilm = filmStorage.create(testFilm);
         Optional<Film> foundFilm = filmStorage.getById(createdFilm.getId());
 
@@ -57,7 +57,7 @@ class FilmDbStorageTest {
     }
 
     @Test
-    void testGetAllFilms() {
+    public void testGetAllFilms() {
         filmStorage.create(testFilm);
 
         Film anotherFilm = new Film();
@@ -75,7 +75,7 @@ class FilmDbStorageTest {
     }
 
     @Test
-    void testUpdateFilm() {
+    public void testUpdateFilm() {
         Film createdFilm = filmStorage.create(testFilm);
 
         createdFilm.setName("Updated Film");
@@ -92,7 +92,7 @@ class FilmDbStorageTest {
     }
 
     @Test
-    void testFilmExists() {
+    public void testFilmExists() {
         Film createdFilm = filmStorage.create(testFilm);
 
         boolean exists = filmStorage.exists(createdFilm.getId());
@@ -103,7 +103,7 @@ class FilmDbStorageTest {
     }
 
     @Test
-    void testDeleteFilm() {
+    public void testDeleteFilm() {
         Film createdFilm = filmStorage.create(testFilm);
 
         boolean existsBefore = filmStorage.exists(createdFilm.getId());
@@ -115,7 +115,7 @@ class FilmDbStorageTest {
     }
 
     @Test
-    void testGetAllMpaRatings() {
+    public void testGetAllMpaRatings() {
         List<MpaRating> mpaRatings = filmStorage.getAllMpaRatings();
 
         assertThat(mpaRatings).isNotEmpty();
@@ -124,7 +124,7 @@ class FilmDbStorageTest {
     }
 
     @Test
-    void testGetAllGenres() {
+    public void testGetAllGenres() {
         List<Genre> genres = filmStorage.getAllGenres();
 
         assertThat(genres).isNotEmpty();
