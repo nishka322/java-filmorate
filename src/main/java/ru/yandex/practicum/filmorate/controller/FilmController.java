@@ -24,7 +24,6 @@ public class FilmController extends BaseController<Film> {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<Object> addFilm(@Valid @RequestBody Film film) {
         return addEntity(film);
     }
@@ -92,7 +91,7 @@ public class FilmController extends BaseController<Film> {
             validateEntity(film);
             Film createdFilm = filmService.createFilm(film);
             log.info("Фильм успешно добавлен: {}", createdFilm);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdFilm);
+            return ResponseEntity.ok(createdFilm);
         } catch (ValidationException e) {
             log.warn("Ошибка валидации при добавлении фильма: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -102,21 +101,12 @@ public class FilmController extends BaseController<Film> {
     @Override
     protected ResponseEntity<Object> updateEntity(Film film) {
         log.info("Получен запрос на обновление фильма: {}", film);
-        try {
-            validateEntity(film);
 
-            if (!filmService.filmExists(film.getId())) {
-                log.error("Фильм с id {} не найден для обновления", film.getId());
-                return createErrorResponse("Фильм с id " + film.getId() + " не найден", HttpStatus.NOT_FOUND);
-            }
+        validateEntity(film);
 
-            Film updatedFilm = filmService.updateFilm(film);
-            log.info("Фильм успешно обновлен: {}", updatedFilm);
-            return ResponseEntity.ok(updatedFilm);
-        } catch (ValidationException e) {
-            log.warn("Ошибка валидации при обновлении фильма: {}", e.getMessage());
-            return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
+        Film updatedFilm = filmService.updateFilm(film);
+        log.info("Фильм успешно обновлен: {}", updatedFilm);
+        return ResponseEntity.ok(updatedFilm);
     }
 
     @Override

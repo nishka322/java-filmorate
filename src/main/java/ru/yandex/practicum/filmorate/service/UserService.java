@@ -2,14 +2,14 @@ package ru.yandex.practicum.filmorate.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
+import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,65 +29,14 @@ public class UserService {
         return users;
     }
 
-    public void addFriend(int userId, int friendId) {
-        log.debug("Добавление в друзья: пользователь {} добавляет пользователя {}", userId, friendId);
-        User user = getUserById(userId);
-        User friend = getUserById(friendId);
-
-        user.getFriends().add(friendId);
-        friend.getFriends().add(userId);
-
-        userStorage.update(user);
-        userStorage.update(friend);
-        log.info("Пользователь {} и пользователь {} теперь друзья", userId, friendId);
-    }
-
-    public void removeFriend(int userId, int friendId) {
-        log.debug("Удаление из друзей: пользователь {} удаляет пользователя {}", userId, friendId);
-        User user = getUserById(userId);
-        User friend = getUserById(friendId);
-
-        user.getFriends().remove(friendId);
-        friend.getFriends().remove(userId);
-
-        userStorage.update(user);
-        userStorage.update(friend);
-        log.info("Пользователь {} и пользователь {} больше не друзья", userId, friendId);
-    }
-
-    public List<User> getFriends(int userId) {
-        log.debug("Получение списка друзей для пользователя {}", userId);
-        User user = getUserById(userId);
-        List<User> friends = user.getFriends().stream()
-                .map(this::getUserById)
-                .collect(Collectors.toList());
-        log.debug("Найдено {} друзей для пользователя {}", friends.size(), userId);
-        return friends;
-    }
-
-    public List<User> getCommonFriends(int userId1, int userId2) {
-        log.debug("Поиск общих друзей между пользователем {} и пользователем {}", userId1, userId2);
-        User user1 = getUserById(userId1);
-        User user2 = getUserById(userId2);
-
-        Set<Integer> commonFriendIds = new HashSet<>(user1.getFriends());
-        commonFriendIds.retainAll(user2.getFriends());
-
-        List<User> commonFriends = commonFriendIds.stream()
-                .map(this::getUserById)
-                .collect(Collectors.toList());
-        log.debug("Найдено {} общих друзей между пользователем {} и пользователем {}",
-                commonFriends.size(), userId1, userId2);
-        return commonFriends;
-    }
-
     public User getUserById(int id) {
         log.debug("Поиск пользователя с id {}", id);
-        return userStorage.getById(id)
+        User user = userStorage.getById(id)
                 .orElseThrow(() -> {
                     log.error("Пользователь с id {} не найден", id);
                     return new IllegalArgumentException("Пользователь с id " + id + " не найден");
                 });
+        return user;
     }
 
     public User createUser(User user) {
@@ -99,9 +48,66 @@ public class UserService {
 
     public User updateUser(User user) {
         log.debug("Обновление пользователя с id {}", user.getId());
+        getUserById(user.getId());
         User updatedUser = userStorage.update(user);
         log.info("Пользователь с id {} обновлен", user.getId());
         return updatedUser;
+    }
+
+    public void addFriend(int userId, int friendId) {
+        log.debug("Добавление в друзья: пользователь {} отправляет запрос пользователю {}", userId, friendId);
+        getUserById(userId);
+        getUserById(friendId);
+
+        UserDbStorage userDbStorage = (UserDbStorage) userStorage;
+        userDbStorage.addFriend(userId, friendId, FriendshipStatus.PENDING);
+        log.info("Пользователь {} отправил запрос на дружбу пользователю {}", userId, friendId);
+    }
+
+    public void confirmFriend(int userId, int friendId) {
+        log.debug("Подтверждение дружбы: пользователь {} подтверждает запрос от пользователя {}", userId, friendId);
+        getUserById(userId);
+        getUserById(friendId);
+
+        UserDbStorage userDbStorage = (UserDbStorage) userStorage;
+        userDbStorage.updateFriendshipStatus(friendId, userId, FriendshipStatus.CONFIRMED);
+        log.info("Дружба между пользователем {} и пользователем {} подтверждена", userId, friendId);
+    }
+
+    public void removeFriend(int userId, int friendId) {
+        log.debug("Удаление из друзей: пользователь {} удаляет пользователя {}", userId, friendId);
+        getUserById(userId);
+        getUserById(friendId);
+
+        UserDbStorage userDbStorage = (UserDbStorage) userStorage;
+        userDbStorage.removeFriend(userId, friendId);
+        log.info("Пользователь {} удалил пользователя {} из друзей", userId, friendId);
+    }
+
+    public List<User> getFriends(int userId) {
+        log.debug("Получение списка друзей для пользователя {}", userId);
+        UserDbStorage userDbStorage = (UserDbStorage) userStorage;
+        return userDbStorage.getFriends(userId);
+    }
+
+    public List<User> getFriendRequests(int userId) {
+        log.debug("Получение входящих запросов на дружбу для пользователя {}", userId);
+        UserDbStorage userDbStorage = (UserDbStorage) userStorage;
+        return userDbStorage.getFriendRequests(userId);
+    }
+
+    public List<User> getCommonFriends(int userId1, int userId2) {
+        log.debug("Поиск общих друзей между пользователем {} и пользователем {}", userId1, userId2);
+        List<User> friends1 = getFriends(userId1);
+        List<User> friends2 = getFriends(userId2);
+
+        List<User> commonFriends = friends1.stream()
+                .filter(friends2::contains)
+                .collect(Collectors.toList());
+
+        log.debug("Найдено {} общих друзей между пользователем {} и пользователем {}",
+                commonFriends.size(), userId1, userId2);
+        return commonFriends;
     }
 
     public boolean userExists(int id) {

@@ -74,6 +74,8 @@ public class UserController extends BaseController<User> {
     @GetMapping("/{id}/friends")
     public ResponseEntity<Object> getFriends(@PathVariable int id) {
         try {
+            userService.getUserById(id);
+
             List<User> friends = userService.getFriends(id);
             log.info("Получен запрос на получение друзей пользователя {}. Количество друзей: {}", id, friends.size());
             return ResponseEntity.ok(friends);
