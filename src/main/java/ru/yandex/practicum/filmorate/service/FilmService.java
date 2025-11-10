@@ -22,19 +22,18 @@ public class FilmService {
     private final MpaDbStorage mpaStorage;
     private final GenreDbStorage genreStorage;
     private static final Logger log = LoggerFactory.getLogger(FilmService.class);
-    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public FilmService(FilmStorage filmStorage,
                        UserService userService,
                        MpaDbStorage mpaStorage,
                        GenreDbStorage genreStorage,
+                       DirectorService directorService,
                        JdbcTemplate jdbcTemplate) {
         this.filmStorage = filmStorage;
         this.userService = userService;
         this.mpaStorage = mpaStorage;
         this.genreStorage = genreStorage;
-        this.jdbcTemplate = jdbcTemplate;
     }
 
     public List<Film> getAllFilms() {
@@ -182,15 +181,17 @@ public class FilmService {
         log.debug("Поиск фильмов: query='{}', searchBy='{}'", query, searchBy);
 
         if (filmStorage instanceof FilmDbStorage filmDbStorage) {
-            // Пока реализуем только поиск по названию, нужно будет добавить режисеров
-            if (searchBy.contains("title")) {
-                List<Film> films = filmDbStorage.searchFilmsByTitle(query);
-                log.info("Найдено {} фильмов по запросу '{}'", films.size(), query);
+            try {
+                List<Film> films = filmDbStorage.searchFilms(query, searchBy);
+                log.info("Найдено {} фильмов по запросу '{}' (поиск по: {})", films.size(), query, searchBy);
                 return films;
+            } catch (Exception e) {
+                log.error("Ошибка при поиске фильмов: query='{}', searchBy='{}'", query, searchBy, e);
+                throw new RuntimeException("Ошибка при выполнении поиска", e);
             }
         }
 
-        log.warn("Поиск по полю '{}' пока не поддерживается", searchBy);
+        log.warn("FilmStorage не поддерживает поиск");
         return List.of();
     }
 }

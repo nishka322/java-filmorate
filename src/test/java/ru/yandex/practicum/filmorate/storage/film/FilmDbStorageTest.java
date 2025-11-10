@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -36,13 +37,26 @@ class FilmDbStorageTest {
         mpa.setId(1);
         testFilm.setMpa(mpa);
 
+        Director nolan = new Director();
+        nolan.setName("Кристофер Нолан");
+        Director createdNolan = filmStorage.createDirector(nolan);
+
+        Director tarantino = new Director();
+        tarantino.setName("Квентин Тарантино");
+        Director createdTarantino = filmStorage.createDirector(tarantino);
+
+        Director cameron = new Director();
+        cameron.setName("Джеймс Кэмерон");
+        Director createdCameron = filmStorage.createDirector(cameron);
+
         Film film1 = new Film();
         film1.setName("Крадущийся тигр");
         film1.setDescription("Боевик про тигра");
         film1.setReleaseDate(LocalDate.of(2000, 1, 1));
         film1.setDuration(120);
         film1.setMpa(mpa);
-        filmStorage.create(film1);
+        Film createdFilm1 = filmStorage.create(film1);
+        filmStorage.addDirectorToFilm(createdFilm1.getId(), createdNolan.getId());
 
         Film film2 = new Film();
         film2.setName("Крадущийся в ночи");
@@ -50,7 +64,8 @@ class FilmDbStorageTest {
         film2.setReleaseDate(LocalDate.of(2001, 1, 1));
         film2.setDuration(110);
         film2.setMpa(mpa);
-        filmStorage.create(film2);
+        Film createdFilm2 = filmStorage.create(film2);
+        filmStorage.addDirectorToFilm(createdFilm2.getId(), createdTarantino.getId());
 
         Film film3 = new Film();
         film3.setName("Спящий дракон");
@@ -58,7 +73,8 @@ class FilmDbStorageTest {
         film3.setReleaseDate(LocalDate.of(2002, 1, 1));
         film3.setDuration(100);
         film3.setMpa(mpa);
-        filmStorage.create(film3);
+        Film createdFilm3 = filmStorage.create(film3);
+        filmStorage.addDirectorToFilm(createdFilm3.getId(), createdNolan.getId());
 
         Film film4 = new Film();
         film4.setName("КРАДУЩИЙСЯ ТИГР: ВОЗВРАЩЕНИЕ КОТА");
@@ -66,7 +82,8 @@ class FilmDbStorageTest {
         film4.setReleaseDate(LocalDate.of(2003, 1, 1));
         film4.setDuration(130);
         film4.setMpa(mpa);
-        filmStorage.create(film4);
+        Film createdFilm4 = filmStorage.create(film4);
+        filmStorage.addDirectorToFilm(createdFilm4.getId(), createdCameron.getId());
     }
 
     @Test
@@ -173,28 +190,30 @@ class FilmDbStorageTest {
     }
 
     @Test
-    public void testSearchFilmsByTitle() {
-        List<Film> foundFilms = filmStorage.searchFilmsByTitle("крад");
-        assertThat(foundFilms).hasSize(3);
+    public void testSearchFilmsByDirectorOnly() {
+        List<Film> foundFilms = filmStorage.searchFilms("Нолан", "director");
+        assertThat(foundFilms).hasSize(2);
         assertThat(foundFilms).extracting(Film::getName)
-                .containsExactlyInAnyOrder("Крадущийся тигр", "Крадущийся в ночи", "КРАДУЩИЙСЯ ТИГР: ВОЗВРАЩЕНИЕ КОТА");
+                .containsExactlyInAnyOrder("Крадущийся тигр", "Спящий дракон");
+    }
 
-        List<Film> tigerFilms = filmStorage.searchFilmsByTitle("тигр");
-        assertThat(tigerFilms).hasSize(2);
-        assertThat(tigerFilms).extracting(Film::getName)
-                .containsExactlyInAnyOrder("Крадущийся тигр", "КРАДУЩИЙСЯ ТИГР: ВОЗВРАЩЕНИЕ КОТА");
+    @Test
+    public void testSearchFilmsByTitleAndDirector() {
+        List<Film> foundFilms = filmStorage.searchFilms("крад", "title,director");
+        assertThat(foundFilms).hasSize(3);
 
-        List<Film> dragonFilms = filmStorage.searchFilmsByTitle("дракон");
-        assertThat(dragonFilms).hasSize(1);
-        assertThat(dragonFilms.getFirst().getName()).isEqualTo("Спящий дракон");
+        List<Film> nolanFilms = filmStorage.searchFilms("Нолан", "title,director");
+        assertThat(nolanFilms).hasSize(2);
+    }
 
-        List<Film> noFilms = filmStorage.searchFilmsByTitle("несуществующий");
-        assertThat(noFilms).isEmpty();
+    @Test
+    public void testSearchFilmsCaseInsensitiveDirector() {
+        List<Film> lowerCase = filmStorage.searchFilms("нолан", "director");
+        List<Film> upperCase = filmStorage.searchFilms("НОЛАН", "director");
+        List<Film> mixedCase = filmStorage.searchFilms("НоЛаН", "director");
 
-        List<Film> allFilms = filmStorage.searchFilmsByTitle("");
-        assertThat(allFilms).hasSize(4); // Только фильмы из setUp
-        assertThat(allFilms).extracting(Film::getName)
-                .containsExactlyInAnyOrder("Крадущийся тигр", "Крадущийся в ночи",
-                        "Спящий дракон", "КРАДУЩИЙСЯ ТИГР: ВОЗВРАЩЕНИЕ КОТА");
+        assertThat(lowerCase).hasSize(2);
+        assertThat(upperCase).hasSize(2);
+        assertThat(mixedCase).hasSize(2);
     }
 }

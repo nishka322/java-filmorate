@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
@@ -235,20 +236,104 @@ public class FilmDbStorage implements FilmStorage {
         }
     }
 
-    public List<Film> searchFilmsByTitle(String query) {
-        String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
+    public void addDirectorToFilm(int filmId, int directorId) {
+        String sql = "INSERT INTO film_directors (film_id, director_id) VALUES (?, ?)";
+        jdbcTemplate.update(sql, filmId, directorId);
+    }
+
+    public Director createDirector(Director director) {
+        String sql = "INSERT INTO directors (name) VALUES (?)";
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+
+        jdbcTemplate.update(connection -> {
+            PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            stmt.setString(1, director.getName());
+            return stmt;
+        }, keyHolder);
+
+        director.setId(keyHolder.getKey().intValue());
+        return director;
+    }
+
+    public List<Director> getAllDirectors() {
+        String sql = "SELECT * FROM directors";
+        return jdbcTemplate.query(sql, this::mapDirector);
+    }
+
+    private Director mapDirector(ResultSet rs, int rowNum) throws SQLException {
+        Director director = new Director();
+        director.setId(rs.getInt("id"));
+        director.setName(rs.getString("name"));
+        return director;
+    }
+
+    private void loadDirectorsForFilms(List<Film> films) {
+        if (films.isEmpty()) return;
+
+        List<Integer> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+
+        String sql = "SELECT fd.film_id, d.id, d.name " +
+                "FROM film_directors fd " +
+                "JOIN directors d ON fd.director_id = d.id " +
+                "WHERE fd.film_id IN (" + String.join(",", Collections.nCopies(filmIds.size(), "?")) + ")";
+
+        Map<Integer, List<Director>> directorsByFilmId = new HashMap<>();
+
+        jdbcTemplate.query(sql, filmIds.toArray(), (rs, rowNum) -> {
+            int filmId = rs.getInt("film_id");
+            Director director = new Director();
+            director.setId(rs.getInt("id"));
+            director.setName(rs.getString("name"));
+
+            directorsByFilmId.computeIfAbsent(filmId, k -> new ArrayList<>()).add(director);
+            return null;
+        });
+
+        for (Film film : films) {
+            List<Director> directors = directorsByFilmId.get(film.getId());
+            if (directors != null) {
+                film.setDirectors(directors);
+            } else {
+                film.setDirectors(new ArrayList<>());
+            }
+        }
+    }
+
+    public List<Film> searchFilms(String query, String searchBy) {
+        String sql = "SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
                 "COUNT(l.user_id) AS likes_count " +
                 "FROM films f " +
                 "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
                 "LEFT JOIN likes l ON f.id = l.film_id " +
-                "WHERE LOWER(f.name) LIKE LOWER(?) " +
-                "GROUP BY f.id, m.id, m.name, m.description " +
+                "LEFT JOIN film_directors fd ON f.id = fd.film_id " +
+                "LEFT JOIN directors d ON fd.director_id = d.id " +
+                "WHERE 1=1 ";
+
+        List<Object> params = new ArrayList<>();
+
+        if (searchBy.contains("title") && searchBy.contains("director")) {
+            sql += "AND (LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?)) ";
+            params.add("%" + query + "%");
+            params.add("%" + query + "%");
+        } else if (searchBy.contains("title")) {
+            sql += "AND LOWER(f.name) LIKE LOWER(?) ";
+            params.add("%" + query + "%");
+        } else if (searchBy.contains("director")) {
+            sql += "AND LOWER(d.name) LIKE LOWER(?) ";
+            params.add("%" + query + "%");
+        } else {
+            sql += "AND LOWER(f.name) LIKE LOWER(?) ";
+            params.add("%" + query + "%");
+        }
+
+        sql += "GROUP BY f.id, m.id, m.name, m.description " +
                 "ORDER BY likes_count DESC";
 
-        List<Film> films = jdbcTemplate.query(sql, this::mapFilm, "%" + query + "%");
+        List<Film> films = jdbcTemplate.query(sql, this::mapFilm, params.toArray());
 
         if (!films.isEmpty()) {
             loadGenresForFilms(films);
+            loadDirectorsForFilms(films);
         }
 
         return films;
