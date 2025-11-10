@@ -300,51 +300,53 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     public List<Film> searchFilms(String query, String searchBy) {
-        String baseSql = "SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
-                "COUNT(l.user_id) AS likes_count " +
-                "FROM films f " +
-                "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
-                "LEFT JOIN likes l ON f.id = l.film_id " +
-                "LEFT JOIN film_directors fd ON f.id = fd.film_id " +
-                "LEFT JOIN directors d ON fd.director_id = d.id ";
-
-        List<Object> params = new ArrayList<>();
-        StringBuilder whereClause = new StringBuilder("WHERE 1=1 ");
+        String searchQuery = "%" + query.toLowerCase() + "%";
 
         String[] searchParams = searchBy.split(",");
         boolean searchTitle = false;
         boolean searchDirector = false;
 
         for (String param : searchParams) {
-            if ("title".equals(param.trim())) {
-                searchTitle = true;
-            }
-            if ("director".equals(param.trim())) {
-                searchDirector = true;
-            }
+            if ("title".equals(param.trim())) searchTitle = true;
+            if ("director".equals(param.trim())) searchDirector = true;
         }
 
         if (!searchTitle && !searchDirector) {
             searchTitle = true;
         }
 
+        StringBuilder sql = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+
         if (searchTitle && searchDirector) {
-            whereClause.append("AND (LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?)) ");
-            params.add("%" + query + "%");
-            params.add("%" + query + "%");
+            sql.append("SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
+                    .append("FROM films f ")
+                    .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
+                    .append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
+                    .append("LEFT JOIN directors d ON fd.director_id = d.id ")
+                    .append("WHERE LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?) ")
+                    .append("ORDER BY f.id");
+            params.add(searchQuery);
+            params.add(searchQuery);
         } else if (searchTitle) {
-            whereClause.append("AND LOWER(f.name) LIKE LOWER(?) ");
-            params.add("%" + query + "%");
+            sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
+                    .append("FROM films f ")
+                    .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
+                    .append("WHERE LOWER(f.name) LIKE LOWER(?) ")
+                    .append("ORDER BY f.id");
+            params.add(searchQuery);
         } else if (searchDirector) {
-            whereClause.append("AND LOWER(d.name) LIKE LOWER(?) ");
-            params.add("%" + query + "%");
+            sql.append("SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
+                    .append("FROM films f ")
+                    .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
+                    .append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
+                    .append("LEFT JOIN directors d ON fd.director_id = d.id ")
+                    .append("WHERE LOWER(d.name) LIKE LOWER(?) ")
+                    .append("ORDER BY f.id");
+            params.add(searchQuery);
         }
 
-        String finalSql = baseSql + whereClause.toString() +
-                "GROUP BY f.id, m.id, m.name, m.description " +
-                "ORDER BY likes_count DESC";
-
-        List<Film> films = jdbcTemplate.query(finalSql, this::mapFilm, params.toArray());
+        List<Film> films = jdbcTemplate.query(sql.toString(), this::mapFilm, params.toArray());
 
         if (!films.isEmpty()) {
             loadGenresForFilms(films);
