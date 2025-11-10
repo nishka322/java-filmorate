@@ -319,7 +319,7 @@ public class FilmDbStorage implements FilmStorage {
         List<Object> params = new ArrayList<>();
 
         if (searchTitle && searchDirector) {
-            sql.append("SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
+            sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
                     .append("FROM films f ")
                     .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
                     .append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
@@ -336,7 +336,7 @@ public class FilmDbStorage implements FilmStorage {
                     .append("ORDER BY f.id");
             params.add(searchQuery);
         } else if (searchDirector) {
-            sql.append("SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
+            sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
                     .append("FROM films f ")
                     .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
                     .append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
