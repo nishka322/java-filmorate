@@ -61,3 +61,28 @@ CREATE TABLE IF NOT EXISTS likes (
     FOREIGN KEY (film_id) REFERENCES films(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+-- Таблица типов событий
+CREATE TABLE IF NOT EXISTS event_types (
+    type_id INTEGER PRIMARY KEY,
+    type_name VARCHAR NOT NULL
+);
+
+-- Таблица операций над событиями
+CREATE TABLE IF NOT EXISTS operations (
+    operation_id INTEGER PRIMARY KEY,
+    operation_name VARCHAR NOT NULL
+);
+
+-- Таблица событий
+CREATE TABLE IF NOT EXISTS events (
+    event_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    type_id INTEGER NOT NULL,
+    operation_id INTEGER NOT NULL,
+    entity_id INTEGER NOT NULL,
+    create_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (type_id) REFERENCES event_types(type_id) ON DELETE CASCADE,
+    FOREIGN KEY (operation_id) REFERENCES operations(operation_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
