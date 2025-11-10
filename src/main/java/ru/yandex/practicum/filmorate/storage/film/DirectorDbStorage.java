@@ -52,6 +52,29 @@ public class DirectorDbStorage {
         return director;
     }
 
+    public Director update(Director director) {
+        String sql = "UPDATE directors SET name = ? WHERE id = ?";
+        int updated = jdbcTemplate.update(sql, director.getName(), director.getId());
+
+        if (updated == 0) {
+            throw new IllegalArgumentException("Режиссер с id " + director.getId() + " не найден");
+        }
+
+        return director;
+    }
+
+    public void delete(int id) {
+        String deleteFilmDirectorsSql = "DELETE FROM film_directors WHERE director_id = ?";
+        jdbcTemplate.update(deleteFilmDirectorsSql, id);
+
+        String deleteDirectorSql = "DELETE FROM directors WHERE id = ?";
+        int deleted = jdbcTemplate.update(deleteDirectorSql, id);
+
+        if (deleted == 0) {
+            throw new IllegalArgumentException("Режиссер с id " + id + " не найден");
+        }
+    }
+
     private Director mapDirector(ResultSet rs, int rowNum) throws SQLException {
         Director director = new Director();
         director.setId(rs.getInt("id"));

@@ -194,4 +194,17 @@ public class FilmService {
         log.warn("FilmStorage не поддерживает поиск");
         return List.of();
     }
+
+    public List<Film> getFilmsByDirector(int directorId, String sortBy) {
+        log.debug("Получение фильмов режиссера {} с сортировкой по {}", directorId, sortBy);
+
+        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
+            List<Film> films = filmDbStorage.getFilmsByDirector(directorId, sortBy);
+            log.info("Найдено {} фильмов режиссера {}", films.size(), directorId);
+            return films;
+        }
+
+        log.warn("FilmStorage не поддерживает поиск по режиссерам");
+        return List.of();
+    }
 }

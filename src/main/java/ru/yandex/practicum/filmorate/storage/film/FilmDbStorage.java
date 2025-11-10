@@ -354,6 +354,36 @@ public class FilmDbStorage implements FilmStorage {
         return films;
     }
 
+    public List<Film> getFilmsByDirector(int directorId, String sortBy) {
+        String baseSql = "SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
+                "COUNT(l.user_id) AS likes_count " +
+                "FROM films f " +
+                "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
+                "LEFT JOIN likes l ON f.id = l.film_id " +
+                "LEFT JOIN film_directors fd ON f.id = fd.film_id " +
+                "WHERE fd.director_id = ? " +
+                "GROUP BY f.id, m.id, m.name, m.description ";
+
+        String orderBy;
+        if ("year".equals(sortBy)) {
+            orderBy = "ORDER BY f.release_date";
+        } else if ("likes".equals(sortBy)) {
+            orderBy = "ORDER BY likes_count DESC";
+        } else {
+            orderBy = "ORDER BY f.id";
+        }
+
+        String finalSql = baseSql + orderBy;
+        List<Film> films = jdbcTemplate.query(finalSql, this::mapFilm, directorId);
+
+        if (!films.isEmpty()) {
+            loadGenresForFilms(films);
+            loadDirectorsForFilms(films);
+        }
+
+        return films;
+    }
+
     public JdbcTemplate getJdbcTemplate() {
         return jdbcTemplate;
     }

@@ -124,4 +124,10 @@ public class FilmController extends BaseController<Film> {
         log.info("Поиск фильмов: '{}' по полям: {}", query, by);
         return filmService.searchFilms(query, by);
     }
+
+    @GetMapping("/director/{directorId}")
+    public List<Film> getFilmsByDirector(@PathVariable int directorId,
+                                         @RequestParam(defaultValue = "year") String sortBy) {
+        return filmService.getFilmsByDirector(directorId, sortBy);
+    }
 }

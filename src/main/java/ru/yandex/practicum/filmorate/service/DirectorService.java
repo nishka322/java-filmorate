@@ -41,4 +41,23 @@ public class DirectorService {
         log.debug("Проверка существования режиссера с id {}", id);
         return directorStorage.getById(id).isPresent();
     }
+
+    public Director updateDirector(Director director) {
+        log.debug("Обновление режиссера с id {}", director.getId());
+        if (!directorExists(director.getId())) {
+            throw new IllegalArgumentException("Режиссер с id " + director.getId() + " не найден");
+        }
+        Director updatedDirector = directorStorage.update(director);
+        log.info("Обновлен режиссер: '{}' (id: {})", updatedDirector.getName(), updatedDirector.getId());
+        return updatedDirector;
+    }
+
+    public void deleteDirector(int id) {
+        log.debug("Удаление режиссера с id {}", id);
+        if (!directorExists(id)) {
+            throw new IllegalArgumentException("Режиссер с id " + id + " не найден");
+        }
+        directorStorage.delete(id);
+        log.info("Удален режиссер с id {}", id);
+    }
 }
