@@ -177,4 +177,20 @@ public class FilmService {
         return genreStorage.getGenreById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
     }
+
+    public List<Film> searchFilms(String query, String searchBy) {
+        log.debug("Поиск фильмов: query='{}', searchBy='{}'", query, searchBy);
+
+        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
+            // Пока реализуем только поиск по названию, нужно будет добавить режисеров
+            if (searchBy.contains("title")) {
+                List<Film> films = filmDbStorage.searchFilmsByTitle(query);
+                log.info("Найдено {} фильмов по запросу '{}'", films.size(), query);
+                return films;
+            }
+        }
+
+        log.warn("Поиск по полю '{}' пока не поддерживается", searchBy);
+        return List.of();
+    }
 }

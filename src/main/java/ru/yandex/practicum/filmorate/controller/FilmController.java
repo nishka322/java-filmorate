@@ -117,4 +117,11 @@ public class FilmController extends BaseController<Film> {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
     }
+
+    @GetMapping("/search")
+    public List<Film> searchFilms(@RequestParam String query,
+                                  @RequestParam(defaultValue = "title") String by) {
+        log.info("Поиск фильмов: '{}' по полям: {}", query, by);
+        return filmService.searchFilms(query, by);
+    }
 }
