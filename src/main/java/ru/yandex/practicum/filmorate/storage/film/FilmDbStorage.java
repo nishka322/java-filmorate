@@ -300,36 +300,51 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     public List<Film> searchFilms(String query, String searchBy) {
-        String sql = "SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
+        String baseSql = "SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
                 "COUNT(l.user_id) AS likes_count " +
                 "FROM films f " +
                 "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
                 "LEFT JOIN likes l ON f.id = l.film_id " +
                 "LEFT JOIN film_directors fd ON f.id = fd.film_id " +
-                "LEFT JOIN directors d ON fd.director_id = d.id " +
-                "WHERE 1=1 ";
+                "LEFT JOIN directors d ON fd.director_id = d.id ";
 
         List<Object> params = new ArrayList<>();
+        StringBuilder whereClause = new StringBuilder("WHERE 1=1 ");
 
-        if (searchBy.contains("title") && searchBy.contains("director")) {
-            sql += "AND (LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?)) ";
+        String[] searchParams = searchBy.split(",");
+        boolean searchTitle = false;
+        boolean searchDirector = false;
+
+        for (String param : searchParams) {
+            if ("title".equals(param.trim())) {
+                searchTitle = true;
+            }
+            if ("director".equals(param.trim())) {
+                searchDirector = true;
+            }
+        }
+
+        if (!searchTitle && !searchDirector) {
+            searchTitle = true;
+        }
+
+        if (searchTitle && searchDirector) {
+            whereClause.append("AND (LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?)) ");
             params.add("%" + query + "%");
             params.add("%" + query + "%");
-        } else if (searchBy.contains("title")) {
-            sql += "AND LOWER(f.name) LIKE LOWER(?) ";
+        } else if (searchTitle) {
+            whereClause.append("AND LOWER(f.name) LIKE LOWER(?) ");
             params.add("%" + query + "%");
-        } else if (searchBy.contains("director")) {
-            sql += "AND LOWER(d.name) LIKE LOWER(?) ";
-            params.add("%" + query + "%");
-        } else {
-            sql += "AND LOWER(f.name) LIKE LOWER(?) ";
+        } else if (searchDirector) {
+            whereClause.append("AND LOWER(d.name) LIKE LOWER(?) ");
             params.add("%" + query + "%");
         }
 
-        sql += "GROUP BY f.id, m.id, m.name, m.description " +
+        String finalSql = baseSql + whereClause.toString() +
+                "GROUP BY f.id, m.id, m.name, m.description " +
                 "ORDER BY likes_count DESC";
 
-        List<Film> films = jdbcTemplate.query(sql, this::mapFilm, params.toArray());
+        List<Film> films = jdbcTemplate.query(finalSql, this::mapFilm, params.toArray());
 
         if (!films.isEmpty()) {
             loadGenresForFilms(films);
