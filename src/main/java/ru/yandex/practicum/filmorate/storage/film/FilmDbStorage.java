@@ -34,6 +34,7 @@ public class FilmDbStorage implements FilmStorage {
 
         if (!films.isEmpty()) {
             loadGenresForFilms(films);
+            loadDirectorsForFilms(films);
         }
 
         return films;
@@ -53,6 +54,7 @@ public class FilmDbStorage implements FilmStorage {
 
         Film film = films.get(0);
         loadGenresForFilms(List.of(film));
+        loadDirectorsForFilms(List.of(film));
 
         return Optional.of(film);
     }
@@ -75,10 +77,12 @@ public class FilmDbStorage implements FilmStorage {
 
         film.setId(keyHolder.getKey().intValue());
         saveFilmGenres(film);
+        saveFilmDirectors(film);
+        loadGenresForFilms(List.of(film));
+        loadDirectorsForFilms(List.of(film));
         return film;
     }
 
-    @Override
     public Film update(Film film) {
         String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_id = ? WHERE id = ?";
         jdbcTemplate.update(sql,
@@ -91,6 +95,9 @@ public class FilmDbStorage implements FilmStorage {
         );
 
         updateFilmGenres(film);
+        updateFilmDirectors(film);
+        loadGenresForFilms(List.of(film));
+        loadDirectorsForFilms(List.of(film));
         return film;
     }
 
@@ -384,6 +391,21 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         return films;
+    }
+
+    private void saveFilmDirectors(Film film) {
+        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
+            String sql = "INSERT INTO film_directors (film_id, director_id) VALUES (?, ?)";
+            for (Director director : film.getDirectors()) {
+                jdbcTemplate.update(sql, film.getId(), director.getId());
+            }
+        }
+    }
+
+    private void updateFilmDirectors(Film film) {
+        String deleteSql = "DELETE FROM film_directors WHERE film_id = ?";
+        jdbcTemplate.update(deleteSql, film.getId());
+        saveFilmDirectors(film);
     }
 
     public JdbcTemplate getJdbcTemplate() {

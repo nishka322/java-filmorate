@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
@@ -21,6 +22,7 @@ public class FilmService {
     private final UserService userService;
     private final MpaDbStorage mpaStorage;
     private final GenreDbStorage genreStorage;
+    private final DirectorService directorService;
     private static final Logger log = LoggerFactory.getLogger(FilmService.class);
 
     @Autowired
@@ -34,6 +36,7 @@ public class FilmService {
         this.userService = userService;
         this.mpaStorage = mpaStorage;
         this.genreStorage = genreStorage;
+        this.directorService = directorService;
     }
 
     public List<Film> getAllFilms() {
@@ -70,10 +73,19 @@ public class FilmService {
             }
         }
 
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() > 0) {
+                    directorService.getDirectorById(director.getId());
+                }
+            }
+        }
+
         Film createdFilm = filmStorage.create(film);
         log.info("Создан новый фильм: '{}' (id: {})", createdFilm.getName(), createdFilm.getId());
         return createdFilm;
     }
+
 
     public Film updateFilm(Film film) {
         log.debug("Обновление фильма с id {}", film.getId());
@@ -85,6 +97,14 @@ public class FilmService {
             MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
                     .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
             film.setMpa(mpa);
+        }
+
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() > 0) {
+                    directorService.getDirectorById(director.getId());
+                }
+            }
         }
 
         Film updatedFilm = filmStorage.update(film);
