@@ -98,6 +98,11 @@ public class UserController extends BaseController<User> {
         }
     }
 
+    @GetMapping("/{id}/feed")
+    public ResponseEntity<Object> getUserFeed(@PathVariable int id){
+        return ResponseEntity.ok(userService.getUserFeed(id));
+    }
+
     @Override
     protected ResponseEntity<Object> addEntity(User user) {
         log.info("Получен запрос на создание пользователя: {}", user);

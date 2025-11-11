@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.FeedDbStorage;
@@ -120,5 +121,9 @@ public class UserService {
     public boolean userExists(int id) {
         log.debug("Проверка существования пользователя с id {}", id);
         return userStorage.exists(id);
+    }
+
+    public List<Event> getUserFeed(int userId){
+       return feedDbStorage.getUserFeed(userId);
     }
 }
