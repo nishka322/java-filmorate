@@ -66,7 +66,7 @@ public class UserService {
         UserDbStorage userDbStorage = (UserDbStorage) userStorage;
         userDbStorage.addFriend(userId, friendId, FriendshipStatus.PENDING);
         log.info("Пользователь {} отправил запрос на дружбу пользователю {}", userId, friendId);
-        feedDbStorage.createNewEvent(userId, friendId, FeedDbStorage.EventType.FRIEND, FeedDbStorage.OperationType.ADD);
+        createEvent(userId, friendId, FeedDbStorage.EventType.FRIEND, FeedDbStorage.OperationType.ADD);
     }
 
     public void confirmFriend(int userId, int friendId) {
@@ -77,7 +77,7 @@ public class UserService {
         UserDbStorage userDbStorage = (UserDbStorage) userStorage;
         userDbStorage.updateFriendshipStatus(friendId, userId, FriendshipStatus.CONFIRMED);
         log.info("Дружба между пользователем {} и пользователем {} подтверждена", userId, friendId);
-        feedDbStorage.createNewEvent(userId, friendId, FeedDbStorage.EventType.FRIEND, FeedDbStorage.OperationType.ADD);
+        createEvent(userId, friendId, FeedDbStorage.EventType.FRIEND, FeedDbStorage.OperationType.ADD);
     }
 
     public void removeFriend(int userId, int friendId) {
@@ -88,7 +88,7 @@ public class UserService {
         UserDbStorage userDbStorage = (UserDbStorage) userStorage;
         userDbStorage.removeFriend(userId, friendId);
         log.info("Пользователь {} удалил пользователя {} из друзей", userId, friendId);
-        feedDbStorage.createNewEvent(userId, friendId, FeedDbStorage.EventType.FRIEND,
+        createEvent(userId, friendId, FeedDbStorage.EventType.FRIEND,
                 FeedDbStorage.OperationType.REMOVE);
     }
 
@@ -125,5 +125,10 @@ public class UserService {
 
     public List<Event> getUserFeed(int userId){
        return feedDbStorage.getUserFeed(userId);
+    }
+
+    public void createEvent(int userId, int entityId, FeedDbStorage.EventType type,
+                            FeedDbStorage.OperationType operation){
+        feedDbStorage.createNewEvent(userId, entityId, type, operation);
     }
 }

@@ -12,6 +12,7 @@ import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
+import ru.yandex.practicum.filmorate.storage.user.FeedDbStorage;
 
 import java.util.List;
 
@@ -103,7 +104,7 @@ public class FilmService {
             FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
             filmDbStorage.addLike(filmId, userId);
         }
-
+        userService.createEvent(userId, filmId, FeedDbStorage.EventType.LIKE, FeedDbStorage.OperationType.ADD);
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
@@ -118,6 +119,7 @@ public class FilmService {
             filmDbStorage.removeLike(filmId, userId);
         }
 
+        userService.createEvent(userId, filmId, FeedDbStorage.EventType.LIKE, FeedDbStorage.OperationType.REMOVE);
         log.info("Пользователь {} удалил лайк с фильма {}", userId, filmId);
     }
 
