@@ -193,13 +193,13 @@ public class FilmService {
         // Фильмы которые лайкнул целевой пользователь
         Set<Integer> likeByUser = filmDbStorage.getLikedFilms(userId);
         if (likeByUser.isEmpty()) {
-            return getPopularFilms(limit);
+            return List.of();
         }
 
         // Пользователи, лайкнувшие любой из фильмов(кроме самого userId)
         Set<Integer> neighborsUsers = filmDbStorage.getUsersPairsForAnyFilms(likeByUser, userId);
         if (neighborsUsers.isEmpty()) {
-            return getPopularFilms(limit);
+            return List.of();
         }
 
         // Подсчёт общих лайков у каждого соседа с целевым
@@ -213,7 +213,7 @@ public class FilmService {
             scopeByFilm.merge(filmId, 1, Integer::sum);
         }
         if (scopeByFilm.isEmpty()) {
-            return getPopularFilms(limit);
+            return List.of();
         }
 
         // Вывод топ N-рекомендаций
