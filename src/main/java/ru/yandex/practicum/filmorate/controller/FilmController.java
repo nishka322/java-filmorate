@@ -1,13 +1,14 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
-import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.service.FilmService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.service.FilmService;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -55,11 +56,7 @@ public class FilmController extends BaseController<Film> {
         try {
             filmService.addLike(id, userId);
             log.info("Пользователь {} поставил лайк фильму {}", userId, id);
-            return ResponseEntity.ok(Map.of(
-                    "message", "Лайк успешно добавлен",
-                    "filmId", id,
-                    "userId", userId
-            ));
+            return ResponseEntity.ok(Map.of("message", "Лайк успешно добавлен", "filmId", id, "userId", userId));
         } catch (IllegalArgumentException e) {
             log.error("Ошибка при добавлении лайка: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
@@ -85,7 +82,7 @@ public class FilmController extends BaseController<Film> {
     }
 
     @DeleteMapping("/{filmId}")
-    public ResponseEntity<Object> removeFilm(@PathVariable int filmId){
+    public ResponseEntity<Object> removeFilm(@PathVariable int filmId) {
         filmService.removeFilm(filmId);
         return ResponseEntity.ok().build();
     }
@@ -118,8 +115,7 @@ public class FilmController extends BaseController<Film> {
     @Override
     protected void validateEntity(Film film) throws ValidationException {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
-            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}",
-                    film.getReleaseDate(), MIN_RELEASE_DATE);
+            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}", film.getReleaseDate(), MIN_RELEASE_DATE);
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
     }
