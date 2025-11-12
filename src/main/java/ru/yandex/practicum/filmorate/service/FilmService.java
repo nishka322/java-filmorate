@@ -177,4 +177,8 @@ public class FilmService {
         return genreStorage.getGenreById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
     }
+
+    public void removeFilm(int id){
+        filmStorage.delete(id);
+    }
 }
