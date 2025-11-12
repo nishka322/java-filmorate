@@ -12,6 +12,9 @@ import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
+import org.junit.jupiter.api.BeforeEach;
+import ru.yandex.practicum.filmorate.model.User;
+
 
 import java.time.LocalDate;
 import java.util.List;
@@ -38,6 +41,23 @@ class FilmControllerTest {
 
     @Autowired
     private UserDbStorage userStorage;
+
+    @Autowired
+    private UserService userService;
+
+    private int userA;
+    private int userB;
+    private int userC;
+
+    @BeforeEach
+    void initUsers() {
+        userA = createUser("a@mail.com", "a");
+        userB = createUser("b@mail.com", "b");
+        userC = createUser("c@mail.com", "c");
+
+        userService.addFriend(userA, userB);
+        userService.addFriend(userB, userA);
+    }
 
     @Test
     public void addFilmValidData() {
@@ -127,6 +147,59 @@ class FilmControllerTest {
         assertNotEquals(result1.getId(), result2.getId());
         assertNotEquals(result2.getId(), result3.getId());
     }
+
+    @Test
+    void getCommonFilms_sortedByPopularity_desc() {
+        int f1 = ((Film) filmController.addFilm(createValidFilm("F1", "d1", LocalDate.of(2000, 1, 1), 100)).getBody()).getId();
+        int f2 = ((Film) filmController.addFilm(createValidFilm("F2", "d2", LocalDate.of(2001, 1, 1), 110)).getBody()).getId();
+        int f3 = ((Film) filmController.addFilm(createValidFilm("F3", "d3", LocalDate.of(2002, 1, 1), 120)).getBody()).getId();
+
+        addLike(f1, userA);
+        addLike(f1, userB);
+        addLike(f2, userA);
+        addLike(f2, userB);
+        addLike(f2, userC);
+
+        List<Film> common = filmController.getFilmByPopularityCommon(userA, userB);
+        assertNotNull(common);
+        assertEquals(2, common.size());
+        assertEquals(f2, common.get(0).getId());
+        assertEquals(f1, common.get(1).getId());
+        assertTrue(common.stream().noneMatch(f -> f.getId() == f3));
+    }
+
+    @Test
+    void getCommonFilms_noIntersection_returnsEmpty() {
+        int f1 = ((Film) filmController.addFilm(createValidFilm("F1", "d1", LocalDate.of(2000, 1, 1), 100)).getBody()).getId();
+        int f2 = ((Film) filmController.addFilm(createValidFilm("F2", "d2", LocalDate.of(2001, 1, 1), 110)).getBody()).getId();
+
+        addLike(f1, userA);
+        addLike(f2, userB);
+
+        List<Film> common = filmController.getFilmByPopularityCommon(userA, userB);
+        assertNotNull(common);
+        assertTrue(common.isEmpty());
+    }
+
+    @Test
+    void getCommonFilms_unknownUser_throws() {
+        assertThrows(RuntimeException.class, () -> filmController.getFilmByPopularityCommon(9999, userB));
+    }
+
+    private int createUser(String email, String login) {
+        User u = new User();
+        u.setEmail(email);
+        u.setLogin(login);
+        u.setName(login.toUpperCase());
+        u.setBirthday(LocalDate.of(1990, 1, 1));
+        return userService.createUser(u).getId();
+    }
+
+    private void addLike(int filmId, int userId) {
+        // если у тебя другой метод/подпись — замени имя вызова
+        filmController.addLike(filmId, userId);
+    }
+
 
     private Film createValidFilm(String name, String description, LocalDate releaseDate, int duration) {
         Film film = new Film();
