@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.storage.film;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -13,6 +14,7 @@ import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Repository
 public class FilmDbStorage implements FilmStorage {
 
@@ -25,9 +27,7 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public List<Film> getAll() {
-        String filmsSql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description " +
-                "FROM films f " +
-                "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id";
+        String filmsSql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description " + "FROM films f " + "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id";
 
         List<Film> films = jdbcTemplate.query(filmsSql, this::mapFilm);
 
@@ -40,10 +40,7 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Optional<Film> getById(int id) {
-        String filmSql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description " +
-                "FROM films f " +
-                "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
-                "WHERE f.id = ?";
+        String filmSql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description " + "FROM films f " + "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " + "WHERE f.id = ?";
 
         List<Film> films = jdbcTemplate.query(filmSql, this::mapFilm, id);
         if (films.isEmpty()) {
@@ -80,14 +77,7 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Film update(Film film) {
         String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_id = ? WHERE id = ?";
-        jdbcTemplate.update(sql,
-                film.getName(),
-                film.getDescription(),
-                film.getReleaseDate() != null ? java.sql.Date.valueOf(film.getReleaseDate()) : null,
-                film.getDuration(),
-                film.getMpa() != null ? film.getMpa().getId() : null,
-                film.getId()
-        );
+        jdbcTemplate.update(sql, film.getName(), film.getDescription(), film.getReleaseDate() != null ? java.sql.Date.valueOf(film.getReleaseDate()) : null, film.getDuration(), film.getMpa() != null ? film.getMpa().getId() : null, film.getId());
 
         updateFilmGenres(film);
         return film;
@@ -95,12 +85,6 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public void delete(int id) {
-        String deleteLikesSql = "DELETE FROM likes WHERE film_id = ?";
-        jdbcTemplate.update(deleteLikesSql, id);
-
-        String deleteFilmGenresSql = "DELETE FROM film_genres WHERE film_id = ?";
-        jdbcTemplate.update(deleteFilmGenresSql, id);
-
         String deleteFilmSql = "DELETE FROM films WHERE id = ?";
         jdbcTemplate.update(deleteFilmSql, id);
     }
@@ -203,15 +187,13 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     public void loadGenresForFilms(List<Film> films) {
-        if (films.isEmpty()) return;
+        if (films.isEmpty()) {
+            return;
+        }
 
         List<Integer> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
 
-        String sql = "SELECT fg.film_id, g.id, g.name " +
-                "FROM film_genres fg " +
-                "JOIN genres g ON fg.genre_id = g.id " +
-                "WHERE fg.film_id IN (" + String.join(",", Collections.nCopies(filmIds.size(), "?")) + ") " +
-                "ORDER BY fg.film_id, g.id";
+        String sql = "SELECT fg.film_id, g.id, g.name " + "FROM film_genres fg " + "JOIN genres g ON fg.genre_id = g.id " + "WHERE fg.film_id IN (" + String.join(",", Collections.nCopies(filmIds.size(), "?")) + ") " + "ORDER BY fg.film_id, g.id";
 
         Map<Integer, List<Genre>> genresByFilmId = new HashMap<>();
 

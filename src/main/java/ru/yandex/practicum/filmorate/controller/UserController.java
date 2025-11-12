@@ -1,13 +1,14 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
-import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
+
 import java.util.List;
 
 @Slf4j
@@ -89,13 +90,18 @@ public class UserController extends BaseController<User> {
     public ResponseEntity<Object> getCommonFriends(@PathVariable int id, @PathVariable int otherId) {
         try {
             List<User> commonFriends = userService.getCommonFriends(id, otherId);
-            log.info("Получен запрос на получение общих друзей пользователей {} и {}. Количество общих друзей: {}",
-                    id, otherId, commonFriends.size());
+            log.info("Получен запрос на получение общих друзей пользователей {} и {}. Количество общих друзей: {}", id, otherId, commonFriends.size());
             return ResponseEntity.ok(commonFriends);
         } catch (IllegalArgumentException e) {
             log.error("Ошибка при получении общих друзей: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         }
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Object> removeUser(@PathVariable int userId) {
+        userService.removeUser(userId);
+        return ResponseEntity.ok().build();
     }
 
     @Override
