@@ -14,6 +14,11 @@ import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
+import ru.yandex.practicum.filmorate.model.Film;
+
+import java.util.stream.Collectors;
+
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +43,13 @@ class UserControllerTest {
 
     @Autowired
     private UserDbStorage userStorage;
+
+    @Autowired
+    private FilmService filmService;
+
+    @Autowired
+    private FilmDbStorage filmStorage;
+
 
     @BeforeEach
     public void setUp() {
@@ -220,6 +232,95 @@ class UserControllerTest {
         List<User> users = userController.getAllUsers();
 
         assertEquals("newlogin", users.getFirst().getName());
+    }
+
+    @Test
+    public void getRecommendationsReturnsFromSimilarUsers() {
+        // Создание пользователей
+        User target = createValidUser("t@mail.com", "target", "Target", LocalDate.of(1990, 1, 1));
+        User similar = createValidUser("s@mail.com", "similar", "Similar", LocalDate.of(1991, 1, 1));
+        User dissimilar = createValidUser("d@mail.com", "dissim", "Dissim", LocalDate.of(1992, 1, 1));
+
+        int targetId = ((User) userController.createUser(target).getBody()).getId();
+        int similarId = ((User) userController.createUser(similar).getBody()).getId();
+        int dissimilarId = ((User) userController.createUser(dissimilar).getBody()).getId();
+
+        // Создания фильмов
+        int fX = filmStorage.create(film("X")).getId();
+        int fY = filmStorage.create(film("Y")).getId();
+        int fZ = filmStorage.create(film("Z")).getId();
+
+        // Лайки: целевой любит X, похожий любит X,Y,Z; непохожий любит только Z (без пересечения)
+        filmService.addLike(fX, targetId);
+
+        filmService.addLike(fX, similarId);
+        filmService.addLike(fY, similarId);
+        filmService.addLike(fZ, similarId);
+
+        filmService.addLike(fZ, dissimilarId);
+
+        // Вызов эндпоинта
+        ResponseEntity<Object> resp = userController.getRecommendations(targetId, 10);
+
+        assertEquals(200, resp.getStatusCode().value());
+        assertNotNull(resp.getBody());
+        @SuppressWarnings("unchecked")
+        List<Film> list = (List<Film>) resp.getBody();
+
+        // ожидаем Y и Z (от похожего), но не X (уже лайкнут)
+        List<Integer> ids = list.stream().map(Film::getId).collect(Collectors.toList());
+        assertTrue(ids.contains(fY), "Ожидаем фильм Y среди рекомендаций");
+        assertTrue(ids.contains(fZ), "Ожидаем фильм Z среди рекомендаций");
+        assertFalse(ids.contains(fX), "Фильм X не должен рекомендоваться (уже лайкнут)");
+    }
+
+    @Test
+    public void getRecommendationsRespectsLimitAndOrder() {
+        // Создание пользователей
+        User target = createValidUser("t2@mail.com", "target2", "Target2", LocalDate.of(1990, 1, 1));
+        User sim1 = createValidUser("s1@mail.com", "sim1", "Similar1", LocalDate.of(1991, 1, 1));
+        User sim2 = createValidUser("s2@mail.com", "sim2", "Similar2", LocalDate.of(1992, 1, 1));
+
+        int targetId = ((User) userController.createUser(target).getBody()).getId();
+        int sim1Id = ((User) userController.createUser(sim1).getBody()).getId();
+        int sim2Id = ((User) userController.createUser(sim2).getBody()).getId();
+
+        // Создание фильмов
+        int fA = filmStorage.create(film("A")).getId();
+        int fB = filmStorage.create(film("B")).getId();
+        int fC = filmStorage.create(film("C")).getId();
+
+        // Целевой лайкнул A
+        filmService.addLike(fA, targetId);
+
+        // Похожие лайкают:
+        // sim1: A, B
+        filmService.addLike(fA, sim1Id);
+        filmService.addLike(fB, sim1Id);
+        // sim2: A, B, C  (B получит больший «скор», чем C)
+        filmService.addLike(fA, sim2Id);
+        filmService.addLike(fB, sim2Id);
+        filmService.addLike(fC, sim2Id);
+
+        ResponseEntity<Object> resp = userController.getRecommendations(targetId, 1);
+
+        assertEquals(200, resp.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        List<Film> list = (List<Film>) resp.getBody();
+
+        assertNotNull(list);
+        assertEquals(1, list.size(), "Должен учитываться limit=1");
+        assertEquals(fB, list.get(0).getId(), "B должен быть первым по скору");
+    }
+
+    // Утилита для быстрого создания фильма
+    private Film film(String name) {
+        Film f = new Film();
+        f.setName(name);
+        f.setDescription(name + " desc");
+        f.setReleaseDate(LocalDate.of(2000, 1, 1));
+        f.setDuration(100);
+        return f;
     }
 
     private User createValidUser(String email, String login, String name, LocalDate birthday) {

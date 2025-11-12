@@ -12,6 +12,8 @@ import ru.yandex.practicum.filmorate.model.Genre;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Arrays;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -131,4 +133,33 @@ class FilmDbStorageTest {
         assertThat(genres).extracting(Genre::getName)
                 .contains("Комедия", "Драма", "Боевик");
     }
+
+    @Test
+    public void getFilmsByIdsPreserveOrder_returnsInSameOrder() {
+        // создаём 3 фильма
+        Film f1 = filmStorage.create(makeFilm("Order-1"));
+        Film f2 = filmStorage.create(makeFilm("Order-2"));
+        Film f3 = filmStorage.create(makeFilm("Order-3"));
+
+        // Запрос в "перемешанном" порядке: f2, f1
+        List<Film> ordered = filmStorage.getFilmsByIdRestoringOrder(Arrays.asList(f2.getId(), f1.getId()));
+
+        assertThat(ordered).hasSize(2);
+        assertThat(ordered.get(0).getId()).isEqualTo(f2.getId());
+        assertThat(ordered.get(1).getId()).isEqualTo(f1.getId());
+    }
+
+    /* Утилита для локального создания фильма с MPA (как в setUp) */
+    private Film makeFilm(String name) {
+        Film f = new Film();
+        f.setName(name);
+        f.setDescription(name + " desc");
+        f.setReleaseDate(LocalDate.of(2000, 1, 1));
+        f.setDuration(100);
+        MpaRating m = new MpaRating();
+        m.setId(1);
+        f.setMpa(m);
+        return f;
+    }
+
 }

@@ -13,7 +13,10 @@ import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class FilmService {
@@ -176,5 +179,50 @@ public class FilmService {
         log.debug("Получение жанра с id {}", id);
         return genreStorage.getGenreById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
+    }
+
+    // Бизнес-логика для рекомендаций
+    public List<Film> getRecomendation(int userId, int limit) {
+        // Проверка на существование пользователей
+        userService.getUserById(userId);
+
+        if (!(filmStorage instanceof FilmDbStorage filmDbStorage)) {
+            return List.of();
+        }
+
+        // Фильмы которые лайкнул целевой пользователь
+        Set<Integer> likeByUser = filmDbStorage.getLikedFilms(userId);
+        if (likeByUser.isEmpty()) {
+            return getPopularFilms(limit);
+        }
+
+        // Пользователи, лайкнувшие любой из фильмов(кроме самого userId)
+        Set<Integer> neighborsUsers = filmDbStorage.getUsersPairsForAnyFilms(likeByUser, userId);
+        if (neighborsUsers.isEmpty()) {
+            return getPopularFilms(limit);
+        }
+
+        // Подсчёт общих лайков у каждого соседа с целевым
+        List<Integer> allFilmsBySimilar = filmDbStorage.getFilmIdsLikedByUsers(neighborsUsers);
+
+        Map<Integer, Integer> scopeByFilm = new HashMap<>();
+        for (Integer filmId : allFilmsBySimilar) {
+            if (likeByUser.contains(filmId)) {
+                continue;
+            }
+            scopeByFilm.merge(filmId, 1, Integer::sum);
+        }
+        if (scopeByFilm.isEmpty()) {
+            return getPopularFilms(limit);
+        }
+
+        // Вывод топ N-рекомендаций
+        List<Integer> topFilmIds = scopeByFilm.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .limit(Math.max(1, limit))
+                .map(Map.Entry::getKey)
+                .toList();
+
+        return filmDbStorage.getFilmsByIdRestoringOrder(topFilmIds);
     }
 }
