@@ -206,6 +206,7 @@ public class FilmService {
 
         return films;
     }
+
     // Бизнес-логика для рекомендаций
     public List<Film> getRecomendation(int userId, int limit) {
         // Проверка на существование пользователей
