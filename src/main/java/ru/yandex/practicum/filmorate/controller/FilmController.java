@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,13 @@ public class FilmController extends BaseController<Film> {
             log.error("Фильм с id {} не найден", id);
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         }
+    }
+
+    @GetMapping("/common")
+    public List<Film> getFilmByPopularityCommon(@RequestParam(name = "userId") int userId,
+                                                @RequestParam(name = "friendId") int friendId) {
+        log.info("Получен запрос на вывод популярных общих фильмов, {} и {}", userId, friendId);
+        return filmService.getFilmByPopularityCommon(userId, friendId);
     }
 
     @PutMapping("/{id}/like/{userId}")

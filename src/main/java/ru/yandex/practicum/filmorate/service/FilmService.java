@@ -13,14 +13,12 @@ import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class FilmService {
     private final FilmStorage filmStorage;
+    private final FilmDbStorage filmDbStorage;
     private final UserService userService;
     private final MpaDbStorage mpaStorage;
     private final GenreDbStorage genreStorage;
@@ -29,11 +27,13 @@ public class FilmService {
 
     @Autowired
     public FilmService(FilmStorage filmStorage,
+                       FilmDbStorage filmDbStorage,
                        UserService userService,
                        MpaDbStorage mpaStorage,
                        GenreDbStorage genreStorage,
                        JdbcTemplate jdbcTemplate) {
         this.filmStorage = filmStorage;
+        this.filmDbStorage = filmDbStorage;
         this.userService = userService;
         this.mpaStorage = mpaStorage;
         this.genreStorage = genreStorage;
@@ -181,6 +181,30 @@ public class FilmService {
                 .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
     }
 
+    // Бизнес-логика для вывода общих фильмов друзей по рейтингу
+
+    public List<Film> getFilmByPopularityCommon(int userId, int friendId) {
+        userService.getUserById(userId);
+        userService.getUserById(friendId);
+
+        Set<Integer> filmsCommon = filmDbStorage.getCommonFilms(userId, friendId);
+
+        if (filmsCommon.isEmpty()) {
+            return List.of();
+        }
+
+        List<Film> films = new ArrayList<>();
+        Map<Integer, Integer> likeCounts = new HashMap<>();
+
+        for (Integer filmId : filmsCommon) {
+            films.add(getFilmById(filmId));
+            likeCounts.put(filmId, Optional.ofNullable(filmDbStorage.getLikeCount(filmId)).orElse(0));
+        }
+
+        films.sort((a, b) -> Integer.compare(likeCounts.getOrDefault(b.getId(), 0),
+                likeCounts.getOrDefault(a.getId(), 0)));
+
+        return films;
     // Бизнес-логика для рекомендаций
     public List<Film> getRecomendation(int userId, int limit) {
         // Проверка на существование пользователей

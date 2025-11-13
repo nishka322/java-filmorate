@@ -199,6 +199,7 @@ public class FilmDbStorage implements FilmStorage {
         jdbcTemplate.update(sql, filmId, userId);
     }
 
+    @Override
     public List<Integer> getLikes(int filmId) {
         String sql = "SELECT user_id FROM likes WHERE film_id = ?";
         return jdbcTemplate.queryForList(sql, Integer.class, filmId);
@@ -243,6 +244,27 @@ public class FilmDbStorage implements FilmStorage {
 
         return film;
     }
+
+    // Реализация запроса на вывод общих фильмов друзей
+    public Set<Integer> getCommonFilms(int userId, int friendId) {
+        String sql = """
+                SELECT DISTINCT l1.film_id
+                FROM likes l1
+                JOIN likes l2 ON l1.film_id = l2.film_id
+                WHERE l1.user_id = ? AND l2.user_id = ?
+                """;
+        return new HashSet<>(jdbcTemplate.queryForList(sql, Integer.class, userId, friendId));
+    }
+
+    @Override
+    public Integer getLikeCount(int filmId) {
+        String sql = """
+                SELECT COUNT(*) FROM likes WHERE film_id = ?;
+                """;
+        return jdbcTemplate.queryForObject(sql, Integer.class, filmId);
+    }
+
+    // Остальная часть реализации приложения
 
     private MpaRating mapMpaRating(ResultSet rs, int rowNum) throws SQLException {
         MpaRating mpa = new MpaRating();
