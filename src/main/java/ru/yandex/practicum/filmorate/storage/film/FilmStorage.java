@@ -17,4 +17,6 @@ public interface FilmStorage {
     void delete(int id);
 
     boolean exists(int id);
+
+    List<Film> getPopular(int count, int genreId, int year);
 }
