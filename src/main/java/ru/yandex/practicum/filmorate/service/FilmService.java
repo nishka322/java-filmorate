@@ -121,34 +121,9 @@ public class FilmService {
         log.info("Пользователь {} удалил лайк с фильма {}", userId, filmId);
     }
 
-    public List<Film> getPopularFilms(int count) {
-        log.debug("Получение {} популярных фильмов", count);
-
-        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
-            String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
-                    "COUNT(l.user_id) AS likes_count " +
-                    "FROM films f " +
-                    "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
-                    "LEFT JOIN likes l ON f.id = l.film_id " +
-                    "GROUP BY f.id, m.id, m.name, m.description " +
-                    "ORDER BY likes_count DESC " +
-                    "LIMIT ?";
-
-            List<Film> films = filmDbStorage.getJdbcTemplate().query(sql, (rs, rowNum) -> {
-                Film film = filmDbStorage.mapFilm(rs, rowNum);
-                return film;
-            }, count);
-
-            if (!films.isEmpty()) {
-                filmDbStorage.loadGenresForFilms(films);
-            }
-
-            log.info("Возвращено {} популярных фильмов", films.size());
-            return films;
-        }
-
-        log.warn("FilmStorage не является FilmDbStorage");
-        return List.of();
+    public List<Film> getPopularFilms(int count, int genreId, int year) {
+        log.debug("Получение {} популярных фильмов  жанре {} за {} год", count, genreId, year);
+         return filmStorage.getPopular(count, genreId, year);
     }
 
     public boolean filmExists(int id) {

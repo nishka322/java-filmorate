@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -55,11 +56,7 @@ public class FilmController extends BaseController<Film> {
         try {
             filmService.addLike(id, userId);
             log.info("Пользователь {} поставил лайк фильму {}", userId, id);
-            return ResponseEntity.ok(Map.of(
-                    "message", "Лайк успешно добавлен",
-                    "filmId", id,
-                    "userId", userId
-            ));
+            return ResponseEntity.ok(Map.of("message", "Лайк успешно добавлен", "filmId", id, "userId", userId));
         } catch (IllegalArgumentException e) {
             log.error("Ошибка при добавлении лайка: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
@@ -79,9 +76,15 @@ public class FilmController extends BaseController<Film> {
     }
 
     @GetMapping("/popular")
-    public List<Film> getPopularFilms(@RequestParam(name = "count", defaultValue = "10") int count) {
-        log.info("Получен запрос на получение {} популярных фильмов", count);
-        return filmService.getPopularFilms(count);
+    public List<Film> getPopularFilms(@RequestParam(required = false, defaultValue = "10") Integer count,
+                                      @RequestParam(required = false, defaultValue = "0") Integer genreId,
+                                      @RequestParam(required = false, defaultValue = "0") Integer year) {
+        log.info("Получен запрос на получение {} популярных фильмов по жанру c id = {} за {} год", count, genreId, year);
+        if (year > 0 && LocalDate.ofYearDay(year, 1).isBefore(MIN_RELEASE_DATE)) {
+            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}", year, MIN_RELEASE_DATE);
+            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
+        }
+        return filmService.getPopularFilms(count, genreId, year);
     }
 
     @Override
@@ -112,8 +115,7 @@ public class FilmController extends BaseController<Film> {
     @Override
     protected void validateEntity(Film film) throws ValidationException {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
-            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}",
-                    film.getReleaseDate(), MIN_RELEASE_DATE);
+            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}", film.getReleaseDate(), MIN_RELEASE_DATE);
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
     }
