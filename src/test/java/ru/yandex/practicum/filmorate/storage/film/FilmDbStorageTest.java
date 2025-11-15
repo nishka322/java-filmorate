@@ -5,20 +5,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
-import java.util.Set;
-
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.Arrays;
-
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,12 +30,10 @@ class FilmDbStorageTest {
     @Autowired
     private UserDbStorage userStorage;
 
+    private Film testFilm;
     private int userA;
     private int userB;
     private int userC;
-
-
-    private Film testFilm;
 
     @BeforeEach
     public void setUp() {
@@ -51,10 +47,60 @@ class FilmDbStorageTest {
         mpa.setId(1);
         testFilm.setMpa(mpa);
 
+        // Создаем режиссеров для тестов поиска
+        Director nolan = new Director();
+        nolan.setName("Кристофер Нолан");
+        Director createdNolan = filmStorage.createDirector(nolan);
+
+        Director tarantino = new Director();
+        tarantino.setName("Квентин Тарантино");
+        Director createdTarantino = filmStorage.createDirector(tarantino);
+
+        Director cameron = new Director();
+        cameron.setName("Джеймс Кэмерон");
+        Director createdCameron = filmStorage.createDirector(cameron);
+
+        // Создаем фильмы для тестов поиска
+        Film film1 = new Film();
+        film1.setName("Крадущийся тигр");
+        film1.setDescription("Боевик про тигра");
+        film1.setReleaseDate(LocalDate.of(2000, 1, 1));
+        film1.setDuration(120);
+        film1.setMpa(mpa);
+        Film createdFilm1 = filmStorage.create(film1);
+        filmStorage.addDirectorToFilm(createdFilm1.getId(), createdNolan.getId());
+
+        Film film2 = new Film();
+        film2.setName("Крадущийся в ночи");
+        film2.setDescription("Триллер");
+        film2.setReleaseDate(LocalDate.of(2001, 1, 1));
+        film2.setDuration(110);
+        film2.setMpa(mpa);
+        Film createdFilm2 = filmStorage.create(film2);
+        filmStorage.addDirectorToFilm(createdFilm2.getId(), createdTarantino.getId());
+
+        Film film3 = new Film();
+        film3.setName("Спящий дракон");
+        film3.setDescription("Фэнтези");
+        film3.setReleaseDate(LocalDate.of(2002, 1, 1));
+        film3.setDuration(100);
+        film3.setMpa(mpa);
+        Film createdFilm3 = filmStorage.create(film3);
+        filmStorage.addDirectorToFilm(createdFilm3.getId(), createdNolan.getId());
+
+        Film film4 = new Film();
+        film4.setName("КРАДУЩИЙСЯ ТИГР: ВОЗВРАЩЕНИЕ КОТА");
+        film4.setDescription("Боевик в верхнем регистре");
+        film4.setReleaseDate(LocalDate.of(2003, 1, 1));
+        film4.setDuration(130);
+        film4.setMpa(mpa);
+        Film createdFilm4 = filmStorage.create(film4);
+        filmStorage.addDirectorToFilm(createdFilm4.getId(), createdCameron.getId());
+
+        // Создаем пользователей для тестов общих фильмов
         userA = createUser("a@mail.com", "a");
         userB = createUser("b@mail.com", "b");
         userC = createUser("c@mail.com", "c");
-
     }
 
     @Test
@@ -85,13 +131,21 @@ class FilmDbStorageTest {
         anotherFilm.setDescription("Another Description");
         anotherFilm.setReleaseDate(LocalDate.of(2021, 1, 1));
         anotherFilm.setDuration(90);
+
+        MpaRating mpa = new MpaRating();
+        mpa.setId(1);
+        anotherFilm.setMpa(mpa);
+
         filmStorage.create(anotherFilm);
 
         List<Film> films = filmStorage.getAll();
 
-        assertThat(films).hasSize(2);
+        assertThat(films).hasSize(6);
         assertThat(films).extracting(Film::getName)
-                .containsExactlyInAnyOrder("Test Film", "Another Film");
+                .contains("Test Film", "Another Film");
+        assertThat(films).extracting(Film::getName)
+                .contains("Крадущийся тигр", "Крадущийся в ночи",
+                        "Спящий дракон", "КРАДУЩИЙСЯ ТИГР: ВОЗВРАЩЕНИЕ КОТА");
     }
 
     @Test
@@ -152,11 +206,41 @@ class FilmDbStorageTest {
                 .contains("Комедия", "Драма", "Боевик");
     }
 
+    // Тесты для функционала поиска
+    @Test
+    public void testSearchFilmsByDirectorOnly() {
+        List<Film> foundFilms = filmStorage.searchFilms("Нолан", "director");
+        assertThat(foundFilms).hasSize(2);
+        assertThat(foundFilms).extracting(Film::getName)
+                .containsExactlyInAnyOrder("Крадущийся тигр", "Спящий дракон");
+    }
+
+    @Test
+    public void testSearchFilmsByTitleAndDirector() {
+        List<Film> foundFilms = filmStorage.searchFilms("крад", "title,director");
+        assertThat(foundFilms).hasSize(3);
+
+        List<Film> nolanFilms = filmStorage.searchFilms("Нолан", "title,director");
+        assertThat(nolanFilms).hasSize(2);
+    }
+
+    @Test
+    public void testSearchFilmsCaseInsensitiveDirector() {
+        List<Film> lowerCase = filmStorage.searchFilms("нолан", "director");
+        List<Film> upperCase = filmStorage.searchFilms("НОЛАН", "director");
+        List<Film> mixedCase = filmStorage.searchFilms("НоЛаН", "director");
+
+        assertThat(lowerCase).hasSize(2);
+        assertThat(upperCase).hasSize(2);
+        assertThat(mixedCase).hasSize(2);
+    }
+
+    // Тесты для функционала общих фильмов
     @Test
     void getCommonFilms_returnsIntersectionOnly() {
-        int f1 = filmStorage.create(film("F1")).getId();
-        int f2 = filmStorage.create(film("F2")).getId();
-        int f3 = filmStorage.create(film("F3")).getId();
+        int f1 = filmStorage.create(makeFilm("F1")).getId();
+        int f2 = filmStorage.create(makeFilm("F2")).getId();
+        int f3 = filmStorage.create(makeFilm("F3")).getId();
 
         filmStorage.addLike(f1, userA);
         filmStorage.addLike(f1, userB);
@@ -172,9 +256,9 @@ class FilmDbStorageTest {
 
     @Test
     void getLikeCount_countsAccurately() {
-        int f1 = filmStorage.create(film("F1")).getId();
-        int f2 = filmStorage.create(film("F2")).getId();
-        int f3 = filmStorage.create(film("F3")).getId();
+        int f1 = filmStorage.create(makeFilm("F1")).getId();
+        int f2 = filmStorage.create(makeFilm("F2")).getId();
+        int f3 = filmStorage.create(makeFilm("F3")).getId();
 
         filmStorage.addLike(f1, userA);
         filmStorage.addLike(f1, userB);
@@ -190,7 +274,7 @@ class FilmDbStorageTest {
 
     @Test
     void getCommonFilms_isDistinct_noDuplicates() {
-        int f1 = filmStorage.create(film("F1")).getId();
+        int f1 = filmStorage.create(makeFilm("F1")).getId();
         filmStorage.addLike(f1, userA);
         filmStorage.addLike(f1, userB);
         filmStorage.removeLike(f1, userA);
@@ -200,8 +284,8 @@ class FilmDbStorageTest {
         assertThat(ids).containsExactlyInAnyOrder(f1);
     }
 
-    private Film film(String name) {
-    public void getFilmsByIdsPreserveOrder_returnsInSameOrder() {
+    @Test
+    void getFilmsByIdsPreserveOrder_returnsInSameOrder() {
         // создаём 3 фильма
         Film f1 = filmStorage.create(makeFilm("Order-1"));
         Film f2 = filmStorage.create(makeFilm("Order-2"));
@@ -215,13 +299,16 @@ class FilmDbStorageTest {
         assertThat(ordered.get(1).getId()).isEqualTo(f1.getId());
     }
 
-    /* Утилита для локального создания фильма с MPA (как в setUp) */
+    /* Утилита для локального создания фильма с MPA */
     private Film makeFilm(String name) {
         Film f = new Film();
         f.setName(name);
         f.setDescription(name + " desc");
         f.setReleaseDate(LocalDate.of(2000, 1, 1));
         f.setDuration(100);
+        MpaRating m = new MpaRating();
+        m.setId(1);
+        f.setMpa(m);
         return f;
     }
 
@@ -233,11 +320,4 @@ class FilmDbStorageTest {
         u.setBirthday(LocalDate.of(1990, 1, 1));
         return userStorage.create(u).getId();
     }
-
-        MpaRating m = new MpaRating();
-        m.setId(1);
-        f.setMpa(m);
-        return f;
-    }
-
 }
