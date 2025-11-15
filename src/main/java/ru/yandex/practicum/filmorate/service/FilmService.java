@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
@@ -22,6 +23,7 @@ public class FilmService {
     private final UserService userService;
     private final MpaDbStorage mpaStorage;
     private final GenreDbStorage genreStorage;
+    private final DirectorService directorService;
     private static final Logger log = LoggerFactory.getLogger(FilmService.class);
     private final JdbcTemplate jdbcTemplate;
 
@@ -31,12 +33,14 @@ public class FilmService {
                        UserService userService,
                        MpaDbStorage mpaStorage,
                        GenreDbStorage genreStorage,
+                       DirectorService directorService,
                        JdbcTemplate jdbcTemplate) {
         this.filmStorage = filmStorage;
         this.filmDbStorage = filmDbStorage;
         this.userService = userService;
         this.mpaStorage = mpaStorage;
         this.genreStorage = genreStorage;
+        this.directorService = directorService;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -74,6 +78,14 @@ public class FilmService {
             }
         }
 
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() > 0) {
+                    directorService.getDirectorById(director.getId());
+                }
+            }
+        }
+
         Film createdFilm = filmStorage.create(film);
         log.info("Создан новый фильм: '{}' (id: {})", createdFilm.getName(), createdFilm.getId());
         return createdFilm;
@@ -89,6 +101,14 @@ public class FilmService {
             MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
                     .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
             film.setMpa(mpa);
+        }
+
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() > 0) {
+                    directorService.getDirectorById(director.getId());
+                }
+            }
         }
 
         Film updatedFilm = filmStorage.update(film);
@@ -181,8 +201,38 @@ public class FilmService {
                 .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
     }
 
-    // Бизнес-логика для вывода общих фильмов друзей по рейтингу
+    public List<Film> searchFilms(String query, String searchBy) {
+        log.debug("Поиск фильмов: query='{}', searchBy='{}'", query, searchBy);
 
+        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
+            try {
+                List<Film> films = filmDbStorage.searchFilms(query, searchBy);
+                log.info("Найдено {} фильмов по запросу '{}' (поиск по: {})", films.size(), query, searchBy);
+                return films;
+            } catch (Exception e) {
+                log.error("Ошибка при поиске фильмов: query='{}', searchBy='{}'", query, searchBy, e);
+                throw new RuntimeException("Ошибка при выполнении поиска", e);
+            }
+        }
+
+        log.warn("FilmStorage не поддерживает поиск");
+        return List.of();
+    }
+
+    public List<Film> getFilmsByDirector(int directorId, String sortBy) {
+        log.debug("Получение фильмов режиссера {} с сортировкой по {}", directorId, sortBy);
+
+        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
+            List<Film> films = filmDbStorage.getFilmsByDirector(directorId, sortBy);
+            log.info("Найдено {} фильмов режиссера {}", films.size(), directorId);
+            return films;
+        }
+
+        log.warn("FilmStorage не поддерживает поиск по режиссерам");
+        return List.of();
+    }
+
+    // Бизнес-логика для вывода общих фильмов друзей по рейтингу
     public List<Film> getFilmByPopularityCommon(int userId, int friendId) {
         userService.getUserById(userId);
         userService.getUserById(friendId);
