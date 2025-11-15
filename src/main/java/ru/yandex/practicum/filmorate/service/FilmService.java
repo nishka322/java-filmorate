@@ -14,29 +14,34 @@ import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
-import java.util.List;
+import java.util.*;
 
 @Service
 public class FilmService {
     private final FilmStorage filmStorage;
+    private final FilmDbStorage filmDbStorage;
     private final UserService userService;
     private final MpaDbStorage mpaStorage;
     private final GenreDbStorage genreStorage;
     private final DirectorService directorService;
     private static final Logger log = LoggerFactory.getLogger(FilmService.class);
+    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public FilmService(FilmStorage filmStorage,
+                       FilmDbStorage filmDbStorage,
                        UserService userService,
                        MpaDbStorage mpaStorage,
                        GenreDbStorage genreStorage,
                        DirectorService directorService,
                        JdbcTemplate jdbcTemplate) {
         this.filmStorage = filmStorage;
+        this.filmDbStorage = filmDbStorage;
         this.userService = userService;
         this.mpaStorage = mpaStorage;
         this.genreStorage = genreStorage;
         this.directorService = directorService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public List<Film> getAllFilms() {
@@ -85,7 +90,6 @@ public class FilmService {
         log.info("Создан новый фильм: '{}' (id: {})", createdFilm.getName(), createdFilm.getId());
         return createdFilm;
     }
-
 
     public Film updateFilm(Film film) {
         log.debug("Обновление фильма с id {}", film.getId());
@@ -226,5 +230,75 @@ public class FilmService {
 
         log.warn("FilmStorage не поддерживает поиск по режиссерам");
         return List.of();
+    }
+
+    // Бизнес-логика для вывода общих фильмов друзей по рейтингу
+    public List<Film> getFilmByPopularityCommon(int userId, int friendId) {
+        userService.getUserById(userId);
+        userService.getUserById(friendId);
+
+        Set<Integer> filmsCommon = filmDbStorage.getCommonFilms(userId, friendId);
+
+        if (filmsCommon.isEmpty()) {
+            return List.of();
+        }
+
+        List<Film> films = new ArrayList<>();
+        Map<Integer, Integer> likeCounts = new HashMap<>();
+
+        for (Integer filmId : filmsCommon) {
+            films.add(getFilmById(filmId));
+            likeCounts.put(filmId, Optional.ofNullable(filmDbStorage.getLikeCount(filmId)).orElse(0));
+        }
+
+        films.sort((a, b) -> Integer.compare(likeCounts.getOrDefault(b.getId(), 0),
+                likeCounts.getOrDefault(a.getId(), 0)));
+
+        return films;
+    }
+
+    // Бизнес-логика для рекомендаций
+    public List<Film> getRecomendation(int userId, int limit) {
+        // Проверка на существование пользователей
+        userService.getUserById(userId);
+
+        if (!(filmStorage instanceof FilmDbStorage filmDbStorage)) {
+            return List.of();
+        }
+
+        // Фильмы которые лайкнул целевой пользователь
+        Set<Integer> likeByUser = filmDbStorage.getLikedFilms(userId);
+        if (likeByUser.isEmpty()) {
+            return List.of();
+        }
+
+        // Пользователи, лайкнувшие любой из фильмов(кроме самого userId)
+        Set<Integer> neighborsUsers = filmDbStorage.getUsersPairsForAnyFilms(likeByUser, userId);
+        if (neighborsUsers.isEmpty()) {
+            return List.of();
+        }
+
+        // Подсчёт общих лайков у каждого соседа с целевым
+        List<Integer> allFilmsBySimilar = filmDbStorage.getFilmIdsLikedByUsers(neighborsUsers);
+
+        Map<Integer, Integer> scopeByFilm = new HashMap<>();
+        for (Integer filmId : allFilmsBySimilar) {
+            if (likeByUser.contains(filmId)) {
+                continue;
+            }
+            scopeByFilm.merge(filmId, 1, Integer::sum);
+        }
+        if (scopeByFilm.isEmpty()) {
+            return List.of();
+        }
+
+        // Вывод топ N-рекомендаций
+        List<Integer> topFilmIds = scopeByFilm.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .limit(Math.max(1, limit))
+                .map(Map.Entry::getKey)
+                .toList();
+
+        return filmDbStorage.getFilmsByIdRestoringOrder(topFilmIds);
     }
 }

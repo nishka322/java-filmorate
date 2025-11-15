@@ -120,6 +120,63 @@ public class FilmDbStorage implements FilmStorage {
         return count != null && count > 0;
     }
 
+    // Реализация Запросов для рекомендаций
+
+    //id фильмов, где есть like от пользователя
+    public Set<Integer> getLikedFilms(int userId) {
+        String sql = "SELECT film_id FROM likes WHERE user_id = ?";
+        return new HashSet<>(jdbcTemplate.queryForList(sql, Integer.class, userId));
+    }
+
+    // Пары для всех пользователей, которые лайкнули любой из переданных фильмов
+    public Set<Integer> getUsersPairsForAnyFilms(Set<Integer> filmsId, int excludeUserId) {
+        if (filmsId == null || filmsId.isEmpty()) {
+            return Set.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(filmsId.size(), "?"));
+        String sql = "SELECT DISTINCT user_id FROM likes WHERE film_id IN (" + placeholders + ") AND user_id <> ?";
+        List<Object> params = new ArrayList<>(filmsId);
+        params.add(excludeUserId);
+        return new HashSet<>(jdbcTemplate.queryForList(sql, Integer.class, params.toArray()));
+    }
+
+    // Список всех film_id который лайкнули пользователи
+    public List<Integer> getFilmIdsLikedByUsers(Set<Integer> usersId) {
+        if (usersId == null || usersId.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(usersId.size(), "?"));
+        String sql = "SELECT film_id FROM likes WHERE user_id IN (" + placeholders + ")";
+        return jdbcTemplate.queryForList(sql, Integer.class, usersId.toArray());
+    }
+
+    // Вывести фильмы по списку id и сохранить порядок переданного списка
+    public List<Film> getFilmsByIdRestoringOrder(List<Integer> filmsId) {
+        if (filmsId == null || filmsId.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(filmsId.size(), "?"));
+        String sql = """
+                SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description
+                FROM films f
+                LEFT JOIN mpa_ratings m ON f.mpa_id = m.id
+                WHERE f.id IN (""" + placeholders + ")";
+        List<Film> films = jdbcTemplate.query(sql, this::mapFilm, filmsId.toArray());
+
+        if (!films.isEmpty()) {
+            loadGenresForFilms(films);
+        }
+
+        Map<Integer, Integer> order = new HashMap<>();
+        for (int i = 0; i < filmsId.size(); i++) {
+            order.put(filmsId.get(i), i);
+        }
+        films.sort(Comparator.comparingInt(f -> order.getOrDefault(f.getId(), Integer.MAX_VALUE)));
+        return films;
+    }
+
+    // Остальная часть реализации приложения
+
     public MpaRating getMpaRatingById(int id) {
         String sql = "SELECT * FROM mpa_ratings WHERE id = ?";
         return jdbcTemplate.queryForObject(sql, this::mapMpaRating, id);
@@ -150,6 +207,7 @@ public class FilmDbStorage implements FilmStorage {
         jdbcTemplate.update(sql, filmId, userId);
     }
 
+    @Override
     public List<Integer> getLikes(int filmId) {
         String sql = "SELECT user_id FROM likes WHERE film_id = ?";
         return jdbcTemplate.queryForList(sql, Integer.class, filmId);
@@ -194,6 +252,27 @@ public class FilmDbStorage implements FilmStorage {
 
         return film;
     }
+
+    // Реализация запроса на вывод общих фильмов друзей
+    public Set<Integer> getCommonFilms(int userId, int friendId) {
+        String sql = """
+                SELECT DISTINCT l1.film_id
+                FROM likes l1
+                JOIN likes l2 ON l1.film_id = l2.film_id
+                WHERE l1.user_id = ? AND l2.user_id = ?
+                """;
+        return new HashSet<>(jdbcTemplate.queryForList(sql, Integer.class, userId, friendId));
+    }
+
+    @Override
+    public Integer getLikeCount(int filmId) {
+        String sql = """
+                SELECT COUNT(*) FROM likes WHERE film_id = ?;
+                """;
+        return jdbcTemplate.queryForObject(sql, Integer.class, filmId);
+    }
+
+    // Остальная часть реализации приложения
 
     private MpaRating mapMpaRating(ResultSet rs, int rowNum) throws SQLException {
         MpaRating mpa = new MpaRating();
@@ -323,44 +402,31 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         StringBuilder sql = new StringBuilder();
+        sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
+                .append("FROM films f ")
+                .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ");
+
         List<Object> params = new ArrayList<>();
 
         if (searchTitle && searchDirector) {
-            sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
-                    .append("FROM films f ")
-                    .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
-                    .append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
+            sql.append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
                     .append("LEFT JOIN directors d ON fd.director_id = d.id ")
-                    .append("WHERE LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?) ")
-                    .append("ORDER BY f.id");
+                    .append("WHERE LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?) ");
             params.add(searchQuery);
             params.add(searchQuery);
         } else if (searchTitle) {
-            sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
-                    .append("FROM films f ")
-                    .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
-                    .append("WHERE LOWER(f.name) LIKE LOWER(?) ")
-                    .append("ORDER BY f.id");
+            sql.append("WHERE LOWER(f.name) LIKE LOWER(?) ");
             params.add(searchQuery);
-        } else if (searchDirector) {
-            sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
-                    .append("FROM films f ")
-                    .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
-                    .append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
+        } else {
+            sql.append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
                     .append("LEFT JOIN directors d ON fd.director_id = d.id ")
-                    .append("WHERE LOWER(d.name) LIKE LOWER(?) ")
-                    .append("ORDER BY f.id");
+                    .append("WHERE LOWER(d.name) LIKE LOWER(?) ");
             params.add(searchQuery);
         }
 
-        List<Film> films = jdbcTemplate.query(sql.toString(), this::mapFilm, params.toArray());
+        sql.append("ORDER BY f.id");
 
-        if (!films.isEmpty()) {
-            loadGenresForFilms(films);
-            loadDirectorsForFilms(films);
-        }
-
-        return films;
+        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> mapFilm(rs, rowNum), params.toArray());
     }
 
     public List<Film> getFilmsByDirector(int directorId, String sortBy) {
