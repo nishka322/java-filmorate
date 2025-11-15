@@ -402,7 +402,7 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
+        sql.append("SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
                 .append("FROM films f ")
                 .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ");
 
@@ -417,7 +417,7 @@ public class FilmDbStorage implements FilmStorage {
         } else if (searchTitle) {
             sql.append("WHERE LOWER(f.name) LIKE LOWER(?) ");
             params.add(searchQuery);
-        } else {
+        } else if (searchDirector) {
             sql.append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
                     .append("LEFT JOIN directors d ON fd.director_id = d.id ")
                     .append("WHERE LOWER(d.name) LIKE LOWER(?) ");
@@ -426,7 +426,14 @@ public class FilmDbStorage implements FilmStorage {
 
         sql.append("ORDER BY f.id");
 
-        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> mapFilm(rs, rowNum), params.toArray());
+        List<Film> films = jdbcTemplate.query(sql.toString(), (rs, rowNum) -> mapFilm(rs, rowNum), params.toArray());
+
+        if (!films.isEmpty()) {
+            loadGenresForFilms(films);
+            loadDirectorsForFilms(films);
+        }
+
+        return films;
     }
 
     public List<Film> getFilmsByDirector(int directorId, String sortBy) {
