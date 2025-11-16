@@ -18,9 +18,7 @@ public class ReviewService {
     private final FilmService filmService;
 
     @Autowired
-    public ReviewService(ReviewStorage reviewStorage,
-                         UserService userService,
-                         FilmService filmService) {
+    public ReviewService(ReviewStorage reviewStorage, UserService userService, FilmService filmService) {
         this.reviewStorage = reviewStorage;
         this.userService = userService;
         this.filmService = filmService;
@@ -56,8 +54,7 @@ public class ReviewService {
     }
 
     public Review getReviewById(int id) {
-        return reviewStorage.getById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Отзыв с id " + id + " не найден"));
+        return reviewStorage.getById(id).orElseThrow(() -> new IllegalArgumentException("Отзыв с id " + id + " не найден"));
     }
 
     public List<Review> getReviews(Integer filmId, Integer countParam) {
@@ -106,4 +103,3 @@ public class ReviewService {
         filmService.getFilmById(filmId);
     }
 }
-// 123

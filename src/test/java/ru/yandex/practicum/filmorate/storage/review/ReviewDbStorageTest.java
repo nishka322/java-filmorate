@@ -123,32 +123,17 @@ class ReviewDbStorageTest {
     }
 
     private Review newReview(String content, boolean isPositive, int useful) {
-        return Review.builder()
-                .content(content)
-                .isPositive(isPositive)
-                .userId(authorId)
-                .filmId(filmId)
-                .useful(useful)
-                .build();
+        return Review.builder().content(content).isPositive(isPositive).userId(authorId).filmId(filmId).useful(useful).build();
     }
 
     private int insertUser(String login) {
         String email = login + "@mail.ru";
-        jdbcTemplate.update("INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)",
-                email,
-                login,
-                "User " + login,
-                Date.valueOf(LocalDate.of(1990, 1, 1)));
+        jdbcTemplate.update("INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)", email, login, "User " + login, Date.valueOf(LocalDate.of(1990, 1, 1)));
         return jdbcTemplate.queryForObject("SELECT id FROM users WHERE login = ?", Integer.class, login);
     }
 
     private int insertFilm(String name) {
-        jdbcTemplate.update("INSERT INTO films (name, description, release_date, duration, mpa_id) VALUES (?, ?, ?, ?, ?)",
-                name,
-                name + " description",
-                Date.valueOf(LocalDate.of(2000, 1, 1)),
-                120,
-                1);
+        jdbcTemplate.update("INSERT INTO films (name, description, release_date, duration, mpa_id) VALUES (?, ?, ?, ?, ?)", name, name + " description", Date.valueOf(LocalDate.of(2000, 1, 1)), 120, 1);
         return jdbcTemplate.queryForObject("SELECT id FROM films WHERE name = ?", Integer.class, name);
     }
 }

@@ -31,6 +31,21 @@ CREATE TABLE IF NOT EXISTS film_genres (
     FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
     );
 
+-- Таблица режиссёров
+CREATE TABLE IF NOT EXISTS directors (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL
+    );
+
+-- Связующая таблица фильмов и режиссёров
+CREATE TABLE IF NOT EXISTS film_directors (
+    film_id INTEGER NOT NULL,
+    director_id INTEGER NOT NULL,
+    PRIMARY KEY (film_id, director_id),
+    FOREIGN KEY (film_id) REFERENCES films(id) ON DELETE CASCADE,
+    FOREIGN KEY (director_id) REFERENCES directors(id) ON DELETE CASCADE
+    );
+
 -- Таблица пользователей
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
