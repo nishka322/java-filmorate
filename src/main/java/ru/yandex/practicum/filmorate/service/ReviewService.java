@@ -30,7 +30,8 @@ public class ReviewService {
         review.setUseful(0);
         Review created = reviewStorage.create(review);
         log.info("Создан отзыв {} для фильма {} пользователем {}", created.getReviewId(), created.getFilmId(), created.getUserId());
-        userService.createEvent(review.getUserId(), review.getFilmId(), FeedDbStorage.EventType.REVIEW, FeedDbStorage.OperationType.ADD);
+        userService.createEvent(review.getUserId(), created.getReviewId(), FeedDbStorage.EventType.REVIEW,
+                FeedDbStorage.OperationType.ADD);
         return created;
     }
 
@@ -46,7 +47,8 @@ public class ReviewService {
 
         Review updated = reviewStorage.update(review);
         log.info("Обновлён отзыв {}", updated.getReviewId());
-        userService.createEvent(review.getUserId(), review.getFilmId(), FeedDbStorage.EventType.REVIEW, FeedDbStorage.OperationType.UPDATE);
+        userService.createEvent(review.getUserId(), updated.getReviewId(), FeedDbStorage.EventType.REVIEW,
+                FeedDbStorage.OperationType.UPDATE);
         return updated;
     }
 
@@ -54,7 +56,8 @@ public class ReviewService {
         Review review = getReviewById(id);
         reviewStorage.delete(id);
         log.info("Удалён отзыв {}", id);
-        userService.createEvent(review.getUserId(), review.getFilmId(), FeedDbStorage.EventType.REVIEW, FeedDbStorage.OperationType.REMOVE);
+        userService.createEvent(review.getUserId(), review.getReviewId(), FeedDbStorage.EventType.REVIEW,
+                FeedDbStorage.OperationType.REMOVE);
     }
 
     public Review getReviewById(int id) {
