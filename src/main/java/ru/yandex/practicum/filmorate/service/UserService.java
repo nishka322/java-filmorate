@@ -57,6 +57,10 @@ public class UserService {
         return updatedUser;
     }
 
+    public void removeUser(int id) {
+        userStorage.delete(id);
+    }
+
     public void addFriend(int userId, int friendId) {
         log.debug("Добавление в друзья: пользователь {} отправляет запрос пользователю {}", userId, friendId);
         getUserById(userId);

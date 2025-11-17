@@ -121,6 +121,12 @@ public class UserController extends BaseController<User> {
     @GetMapping("/{id}/feed")
     public ResponseEntity<Object> getUserFeed(@PathVariable int id){
         return ResponseEntity.ok(userService.getUserFeed(id));
+      
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Object> removeUser(@PathVariable int userId) {
+        log.info("Удаляем пользователя с id = {}", userId);
+        userService.removeUser(userId);
+        return ResponseEntity.ok().build();
     }
 
     @Override
