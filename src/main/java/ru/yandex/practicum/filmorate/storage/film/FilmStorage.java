@@ -21,5 +21,7 @@ public interface FilmStorage {
 
     List<Integer> getLikes(int filmId);
 
-    Integer getLikeCount(int filmId);
+    public Integer getLikeCount(int filmId);
+
+    List<Film> getPopular(int count, int genreId, int year);
 }

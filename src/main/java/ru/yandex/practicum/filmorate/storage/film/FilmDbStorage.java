@@ -104,6 +104,38 @@ public class FilmDbStorage implements FilmStorage {
         return count != null && count > 0;
     }
 
+    @Override
+    public List<Film> getPopular(int count, int genreId, int year) {
+        StringBuilder sql = new StringBuilder();
+
+        sql.append("SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, COUNT(l.user_id) AS likes_count ").append("FROM films f ").append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ").append("LEFT JOIN likes l ON f.id = l.film_id ");
+
+        List<String> whereParams = new ArrayList<>();
+        if (genreId > 0 && getGenreById(genreId) != null) { //сортировка по жанру
+            whereParams.add("film_id IN (SELECT film_id FROM film_genres WHERE genre_id = " + genreId + ") ");
+        }
+        if (year > 0) {
+            whereParams.add("YEAR(release_date) = " + year + " ");
+        }
+
+        if (!whereParams.isEmpty()) {
+            sql.append("WHERE ").append(whereParams.get(0));
+            if (whereParams.size() == 2) {
+                sql.append(" AND ").append(whereParams.get(1));
+            }
+        }
+
+        sql.append("GROUP BY f.id, m.id, m.name, m.description ").append("ORDER BY likes_count DESC ").append("LIMIT ?");
+
+        List<Film> films = jdbcTemplate.query(sql.toString(), this::mapFilm, count);
+
+        if (!films.isEmpty()) {
+            loadGenresForFilms(films);
+        }
+
+        return films;
+    }
+
     // Реализация Запросов для рекомендаций
 
     //id фильмов, где есть like от пользователя
