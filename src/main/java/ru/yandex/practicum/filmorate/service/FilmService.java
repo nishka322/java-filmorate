@@ -172,8 +172,11 @@ public class FilmService {
 
     public Genre getGenreById(int id) {
         log.debug("Получение жанра с id {}", id);
-        return genreStorage.getGenreById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
+        return genreStorage.getGenreById(id).orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
+    }
+
+    public void removeFilm(int id) {
+        filmStorage.delete(id);
     }
 
     public List<Film> searchFilms(String query, String searchBy) {

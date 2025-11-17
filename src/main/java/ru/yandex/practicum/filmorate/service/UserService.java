@@ -31,11 +31,10 @@ public class UserService {
 
     public User getUserById(int id) {
         log.debug("Поиск пользователя с id {}", id);
-        User user = userStorage.getById(id)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", id);
-                    return new IllegalArgumentException("Пользователь с id " + id + " не найден");
-                });
+        User user = userStorage.getById(id).orElseThrow(() -> {
+            log.error("Пользователь с id {} не найден", id);
+            return new IllegalArgumentException("Пользователь с id " + id + " не найден");
+        });
         return user;
     }
 
@@ -52,6 +51,10 @@ public class UserService {
         User updatedUser = userStorage.update(user);
         log.info("Пользователь с id {} обновлен", user.getId());
         return updatedUser;
+    }
+
+    public void removeUser(int id) {
+        userStorage.delete(id);
     }
 
     public void addFriend(int userId, int friendId) {
@@ -101,12 +104,9 @@ public class UserService {
         List<User> friends1 = getFriends(userId1);
         List<User> friends2 = getFriends(userId2);
 
-        List<User> commonFriends = friends1.stream()
-                .filter(friends2::contains)
-                .collect(Collectors.toList());
+        List<User> commonFriends = friends1.stream().filter(friends2::contains).collect(Collectors.toList());
 
-        log.debug("Найдено {} общих друзей между пользователем {} и пользователем {}",
-                commonFriends.size(), userId1, userId2);
+        log.debug("Найдено {} общих друзей между пользователем {} и пользователем {}", commonFriends.size(), userId1, userId2);
         return commonFriends;
     }
 

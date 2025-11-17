@@ -94,6 +94,13 @@ public class FilmController extends BaseController<Film> {
         return filmService.getPopularFilms(count, genreId, year);
     }
 
+    @DeleteMapping("/{filmId}")
+    public ResponseEntity<Object> removeFilm(@PathVariable int filmId) {
+        log.info("Удаляем фильм с id = {}", filmId);
+        filmService.removeFilm(filmId);
+        return ResponseEntity.ok().build();
+    }
+
     @Override
     protected ResponseEntity<Object> addEntity(Film film) {
         log.info("Получен запрос на добавление фильма: {}", film);
