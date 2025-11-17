@@ -1,13 +1,16 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
+import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @Slf4j
@@ -15,14 +18,31 @@ import java.util.List;
 @RequestMapping("/users")
 public class UserController extends BaseController<User> {
     private final UserService userService;
+    private final FilmService filmService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, FilmService filmService) {
         this.userService = userService;
+        this.filmService = filmService;
     }
 
     @PostMapping
     public ResponseEntity<Object> createUser(@Valid @RequestBody User user) {
         return addEntity(user);
+    }
+
+    @GetMapping("/{id}/recommendations")
+    public ResponseEntity<Object> getRecommendations(@PathVariable int id,
+                                                     @RequestParam(name = "count", defaultValue = "10") int count) {
+        try {
+            userService.getUserById(id);
+
+            List<Film> recs = filmService.getRecomendation(id, count);
+            return ResponseEntity.ok(recs);
+
+        } catch (IllegalArgumentException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
+        }
+
     }
 
     @PutMapping
@@ -114,7 +134,8 @@ public class UserController extends BaseController<User> {
     }
 
     @Override
-    protected ResponseEntity<Object> updateEntity(User user) {
+    protected ResponseEntity<Object>
+    updateEntity(User user) {
         log.info("Получен запрос на обновление пользователя: {}", user);
         try {
             validateEntity(user);

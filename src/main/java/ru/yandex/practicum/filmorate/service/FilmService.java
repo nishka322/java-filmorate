@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
@@ -13,27 +14,33 @@ import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
-import java.util.List;
+import java.util.*;
 
 @Service
 public class FilmService {
     private final FilmStorage filmStorage;
+    private final FilmDbStorage filmDbStorage;
     private final UserService userService;
     private final MpaDbStorage mpaStorage;
     private final GenreDbStorage genreStorage;
+    private final DirectorService directorService;
     private static final Logger log = LoggerFactory.getLogger(FilmService.class);
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public FilmService(FilmStorage filmStorage,
+                       FilmDbStorage filmDbStorage,
                        UserService userService,
                        MpaDbStorage mpaStorage,
                        GenreDbStorage genreStorage,
+                       DirectorService directorService,
                        JdbcTemplate jdbcTemplate) {
         this.filmStorage = filmStorage;
+        this.filmDbStorage = filmDbStorage;
         this.userService = userService;
         this.mpaStorage = mpaStorage;
         this.genreStorage = genreStorage;
+        this.directorService = directorService;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -71,6 +78,14 @@ public class FilmService {
             }
         }
 
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() > 0) {
+                    directorService.getDirectorById(director.getId());
+                }
+            }
+        }
+
         Film createdFilm = filmStorage.create(film);
         log.info("Создан новый фильм: '{}' (id: {})", createdFilm.getName(), createdFilm.getId());
         return createdFilm;
@@ -86,6 +101,14 @@ public class FilmService {
             MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
                     .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
             film.setMpa(mpa);
+        }
+
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() > 0) {
+                    directorService.getDirectorById(director.getId());
+                }
+            }
         }
 
         Film updatedFilm = filmStorage.update(film);
@@ -151,5 +174,106 @@ public class FilmService {
         log.debug("Получение жанра с id {}", id);
         return genreStorage.getGenreById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
+    }
+
+    public List<Film> searchFilms(String query, String searchBy) {
+        log.debug("Поиск фильмов: query='{}', searchBy='{}'", query, searchBy);
+
+        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
+            try {
+                List<Film> films = filmDbStorage.searchFilms(query, searchBy);
+                log.info("Найдено {} фильмов по запросу '{}' (поиск по: {})", films.size(), query, searchBy);
+                return films;
+            } catch (Exception e) {
+                log.error("Ошибка при поиске фильмов: query='{}', searchBy='{}'", query, searchBy, e);
+                throw new RuntimeException("Ошибка при выполнении поиска", e);
+            }
+        }
+
+        log.warn("FilmStorage не поддерживает поиск");
+        return List.of();
+    }
+
+    public List<Film> getFilmsByDirector(int directorId, String sortBy) {
+        log.debug("Получение фильмов режиссера {} с сортировкой по {}", directorId, sortBy);
+
+        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
+            List<Film> films = filmDbStorage.getFilmsByDirector(directorId, sortBy);
+            log.info("Найдено {} фильмов режиссера {}", films.size(), directorId);
+            return films;
+        }
+
+        log.warn("FilmStorage не поддерживает поиск по режиссерам");
+        return List.of();
+    }
+
+    // Бизнес-логика для вывода общих фильмов друзей по рейтингу
+    public List<Film> getFilmByPopularityCommon(int userId, int friendId) {
+        userService.getUserById(userId);
+        userService.getUserById(friendId);
+
+        Set<Integer> filmsCommon = filmDbStorage.getCommonFilms(userId, friendId);
+
+        if (filmsCommon.isEmpty()) {
+            return List.of();
+        }
+
+        List<Film> films = new ArrayList<>();
+        Map<Integer, Integer> likeCounts = new HashMap<>();
+
+        for (Integer filmId : filmsCommon) {
+            films.add(getFilmById(filmId));
+            likeCounts.put(filmId, Optional.ofNullable(filmDbStorage.getLikeCount(filmId)).orElse(0));
+        }
+
+        films.sort((a, b) -> Integer.compare(likeCounts.getOrDefault(b.getId(), 0),
+                likeCounts.getOrDefault(a.getId(), 0)));
+
+        return films;
+    }
+
+    // Бизнес-логика для рекомендаций
+    public List<Film> getRecomendation(int userId, int limit) {
+        // Проверка на существование пользователей
+        userService.getUserById(userId);
+
+        if (!(filmStorage instanceof FilmDbStorage filmDbStorage)) {
+            return List.of();
+        }
+
+        // Фильмы которые лайкнул целевой пользователь
+        Set<Integer> likeByUser = filmDbStorage.getLikedFilms(userId);
+        if (likeByUser.isEmpty()) {
+            return List.of();
+        }
+
+        // Пользователи, лайкнувшие любой из фильмов(кроме самого userId)
+        Set<Integer> neighborsUsers = filmDbStorage.getUsersPairsForAnyFilms(likeByUser, userId);
+        if (neighborsUsers.isEmpty()) {
+            return List.of();
+        }
+
+        // Подсчёт общих лайков у каждого соседа с целевым
+        List<Integer> allFilmsBySimilar = filmDbStorage.getFilmIdsLikedByUsers(neighborsUsers);
+
+        Map<Integer, Integer> scopeByFilm = new HashMap<>();
+        for (Integer filmId : allFilmsBySimilar) {
+            if (likeByUser.contains(filmId)) {
+                continue;
+            }
+            scopeByFilm.merge(filmId, 1, Integer::sum);
+        }
+        if (scopeByFilm.isEmpty()) {
+            return List.of();
+        }
+
+        // Вывод топ N-рекомендаций
+        List<Integer> topFilmIds = scopeByFilm.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .limit(Math.max(1, limit))
+                .map(Map.Entry::getKey)
+                .toList();
+
+        return filmDbStorage.getFilmsByIdRestoringOrder(topFilmIds);
     }
 }
