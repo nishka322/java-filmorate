@@ -19,7 +19,7 @@ public interface FilmStorage {
 
     boolean exists(int id);
 
-    public List<Integer> getLikes(int filmId);
+    List<Integer> getLikes(int filmId);
 
-    public Integer getLikeCount(int filmId);
+    Integer getLikeCount(int filmId);
 }
