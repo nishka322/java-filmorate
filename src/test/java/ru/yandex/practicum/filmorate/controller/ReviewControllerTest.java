@@ -21,6 +21,8 @@ import ru.yandex.practicum.filmorate.service.DirectorService;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.ReviewService;
 import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.feed.EventRowMapper;
+import ru.yandex.practicum.filmorate.storage.feed.FeedDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.DirectorDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
@@ -61,7 +63,8 @@ class ReviewControllerTest {
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 
         UserDbStorage userDbStorage = new UserDbStorage(jdbcTemplate);
-        userService = new UserService(userDbStorage);
+        FeedDbStorage feedDbStorage = new FeedDbStorage(jdbcTemplate, new EventRowMapper());
+        userService = new UserService(userDbStorage, feedDbStorage);
 
         MpaDbStorage mpaDbStorage = new MpaDbStorage(jdbcTemplate);
         GenreDbStorage genreDbStorage = new GenreDbStorage(jdbcTemplate);

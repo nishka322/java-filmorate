@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.storage.user;
+package ru.yandex.practicum.filmorate.storage.feed;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -25,9 +25,7 @@ public class FeedDbStorage {
 
     @Getter
     public enum EventType {
-        LIKE(1),
-        REVIEW(2),
-        FRIEND(3);
+        LIKE(1), REVIEW(2), FRIEND(3);
 
         private final int id;
         private static final Map<Integer, EventType> CODE_MAP = new HashMap<>();
@@ -48,11 +46,10 @@ public class FeedDbStorage {
         }
 
     }
+
     @Getter
     public enum OperationType {
-        ADD(1),
-        REMOVE(2),
-        UPDATE(3);
+        ADD(1), REMOVE(2), UPDATE(3);
 
         private final int id;
         private static final Map<Integer, OperationType> CODE_MAP = new HashMap<>();
@@ -85,12 +82,12 @@ public class FeedDbStorage {
         jdbc.update(sql, userId, type.getId(), operation.getId(), entityId, createAt);
     }
 
-    public List<Event> getUserFeed(int userId){
+    public List<Event> getUserFeed(int userId) {
         String sql = "SELECT * FROM events WHERE user_id = ?";
         List<Event> feed = new ArrayList<>();
-        try{
+        try {
             feed = jdbc.query(sql, mapper, userId);
-        } catch (RuntimeException e){
+        } catch (RuntimeException e) {
             log.error("Ошибка получения ленты событий.");
         }
         log.info("feed: {}", feed);

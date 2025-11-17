@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.storage.user;
+package ru.yandex.practicum.filmorate.storage.feed;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.RowMapper;
@@ -7,7 +7,6 @@ import ru.yandex.practicum.filmorate.model.Event;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 
 @Slf4j
 @Component
@@ -17,10 +16,10 @@ public class EventRowMapper implements RowMapper<Event> {
         Event event = new Event();
         event.setId(rs.getInt("event_id"));
         event.setUserId(rs.getInt("user_id"));
-        event.setType(FeedDbStorage.EventType.getByCode(rs.getInt("type_id")));
+        event.setEventType(FeedDbStorage.EventType.getByCode(rs.getInt("type_id")));
         event.setOperation(FeedDbStorage.OperationType.getByCode(rs.getInt("operation_id")));
         event.setEntityId(rs.getInt("entity_id"));
-        event.setCreateAt(rs.getTimestamp("create_at").toInstant());
+        event.setTimestamp(rs.getTimestamp("create_at").toInstant().toEpochMilli());
         return event;
     }
 }

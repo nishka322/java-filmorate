@@ -9,11 +9,11 @@ import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
+import ru.yandex.practicum.filmorate.storage.feed.FeedDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
-import ru.yandex.practicum.filmorate.storage.user.FeedDbStorage;
 
 import java.util.*;
 
@@ -29,13 +29,7 @@ public class FilmService {
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public FilmService(FilmStorage filmStorage,
-                       FilmDbStorage filmDbStorage,
-                       UserService userService,
-                       MpaDbStorage mpaStorage,
-                       GenreDbStorage genreStorage,
-                       DirectorService directorService,
-                       JdbcTemplate jdbcTemplate) {
+    public FilmService(FilmStorage filmStorage, FilmDbStorage filmDbStorage, UserService userService, MpaDbStorage mpaStorage, GenreDbStorage genreStorage, DirectorService directorService, JdbcTemplate jdbcTemplate) {
         this.filmStorage = filmStorage;
         this.filmDbStorage = filmDbStorage;
         this.userService = userService;
@@ -54,27 +48,24 @@ public class FilmService {
 
     public Film getFilmById(int id) {
         log.debug("Поиск фильма с id {}", id);
-        Film film = filmStorage.getById(id)
-                .orElseThrow(() -> {
-                    log.error("Фильм с id {} не найден", id);
-                    return new IllegalArgumentException("Фильм с id " + id + " не найден");
-                });
+        Film film = filmStorage.getById(id).orElseThrow(() -> {
+            log.error("Фильм с id {} не найден", id);
+            return new IllegalArgumentException("Фильм с id " + id + " не найден");
+        });
         return film;
     }
 
     public Film createFilm(Film film) {
         log.debug("Создание нового фильма: {}", film.getName());
         if (film.getMpa() != null && film.getMpa().getId() > 0) {
-            MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
+            MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId()).orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
             film.setMpa(mpa);
         }
 
         if (film.getGenres() != null) {
             for (Genre genre : film.getGenres()) {
                 if (genre.getId() > 0) {
-                    genreStorage.getGenreById(genre.getId())
-                            .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + genre.getId() + " не найден"));
+                    genreStorage.getGenreById(genre.getId()).orElseThrow(() -> new IllegalArgumentException("Жанр с id " + genre.getId() + " не найден"));
                 }
             }
         }
@@ -95,12 +86,10 @@ public class FilmService {
     public Film updateFilm(Film film) {
         log.debug("Обновление фильма с id {}", film.getId());
 
-        Film existingFilm = filmStorage.getById(film.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Фильм с id " + film.getId() + " не найден"));
+        Film existingFilm = filmStorage.getById(film.getId()).orElseThrow(() -> new IllegalArgumentException("Фильм с id " + film.getId() + " не найден"));
 
         if (film.getMpa() != null && film.getMpa().getId() > 0) {
-            MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
+            MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId()).orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
             film.setMpa(mpa);
         }
 
@@ -150,14 +139,7 @@ public class FilmService {
         log.debug("Получение {} популярных фильмов", count);
 
         if (filmStorage instanceof FilmDbStorage filmDbStorage) {
-            String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
-                    "COUNT(l.user_id) AS likes_count " +
-                    "FROM films f " +
-                    "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
-                    "LEFT JOIN likes l ON f.id = l.film_id " +
-                    "GROUP BY f.id, m.id, m.name, m.description " +
-                    "ORDER BY likes_count DESC " +
-                    "LIMIT ?";
+            String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " + "COUNT(l.user_id) AS likes_count " + "FROM films f " + "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " + "LEFT JOIN likes l ON f.id = l.film_id " + "GROUP BY f.id, m.id, m.name, m.description " + "ORDER BY likes_count DESC " + "LIMIT ?";
 
             List<Film> films = filmDbStorage.getJdbcTemplate().query(sql, (rs, rowNum) -> {
                 Film film = filmDbStorage.mapFilm(rs, rowNum);
@@ -188,8 +170,7 @@ public class FilmService {
 
     public MpaRating getMpaRatingById(int id) {
         log.debug("Получение рейтинга MPA с id {}", id);
-        return mpaStorage.getMpaRatingById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + id + " не найден"));
+        return mpaStorage.getMpaRatingById(id).orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + id + " не найден"));
     }
 
     public List<Genre> getAllGenres() {
@@ -199,8 +180,7 @@ public class FilmService {
 
     public Genre getGenreById(int id) {
         log.debug("Получение жанра с id {}", id);
-        return genreStorage.getGenreById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
+        return genreStorage.getGenreById(id).orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
     }
 
     public List<Film> searchFilms(String query, String searchBy) {
@@ -253,8 +233,7 @@ public class FilmService {
             likeCounts.put(filmId, Optional.ofNullable(filmDbStorage.getLikeCount(filmId)).orElse(0));
         }
 
-        films.sort((a, b) -> Integer.compare(likeCounts.getOrDefault(b.getId(), 0),
-                likeCounts.getOrDefault(a.getId(), 0)));
+        films.sort((a, b) -> Integer.compare(likeCounts.getOrDefault(b.getId(), 0), likeCounts.getOrDefault(a.getId(), 0)));
 
         return films;
     }
@@ -295,11 +274,7 @@ public class FilmService {
         }
 
         // Вывод топ N-рекомендаций
-        List<Integer> topFilmIds = scopeByFilm.entrySet().stream()
-                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
-                .limit(Math.max(1, limit))
-                .map(Map.Entry::getKey)
-                .toList();
+        List<Integer> topFilmIds = scopeByFilm.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue(), a.getValue())).limit(Math.max(1, limit)).map(Map.Entry::getKey).toList();
 
         return filmDbStorage.getFilmsByIdRestoringOrder(topFilmIds);
     }

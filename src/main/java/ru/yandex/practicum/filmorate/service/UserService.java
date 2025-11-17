@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.user.FeedDbStorage;
+import ru.yandex.practicum.filmorate.storage.feed.FeedDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -35,11 +35,10 @@ public class UserService {
 
     public User getUserById(int id) {
         log.debug("Поиск пользователя с id {}", id);
-        User user = userStorage.getById(id)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", id);
-                    return new IllegalArgumentException("Пользователь с id " + id + " не найден");
-                });
+        User user = userStorage.getById(id).orElseThrow(() -> {
+            log.error("Пользователь с id {} не найден", id);
+            return new IllegalArgumentException("Пользователь с id " + id + " не найден");
+        });
         return user;
     }
 
@@ -88,8 +87,7 @@ public class UserService {
         UserDbStorage userDbStorage = (UserDbStorage) userStorage;
         userDbStorage.removeFriend(userId, friendId);
         log.info("Пользователь {} удалил пользователя {} из друзей", userId, friendId);
-        createEvent(userId, friendId, FeedDbStorage.EventType.FRIEND,
-                FeedDbStorage.OperationType.REMOVE);
+        createEvent(userId, friendId, FeedDbStorage.EventType.FRIEND, FeedDbStorage.OperationType.REMOVE);
     }
 
     public List<User> getFriends(int userId) {
@@ -109,12 +107,9 @@ public class UserService {
         List<User> friends1 = getFriends(userId1);
         List<User> friends2 = getFriends(userId2);
 
-        List<User> commonFriends = friends1.stream()
-                .filter(friends2::contains)
-                .collect(Collectors.toList());
+        List<User> commonFriends = friends1.stream().filter(friends2::contains).collect(Collectors.toList());
 
-        log.debug("Найдено {} общих друзей между пользователем {} и пользователем {}",
-                commonFriends.size(), userId1, userId2);
+        log.debug("Найдено {} общих друзей между пользователем {} и пользователем {}", commonFriends.size(), userId1, userId2);
         return commonFriends;
     }
 
@@ -123,12 +118,11 @@ public class UserService {
         return userStorage.exists(id);
     }
 
-    public List<Event> getUserFeed(int userId){
-       return feedDbStorage.getUserFeed(userId);
+    public List<Event> getUserFeed(int userId) {
+        return feedDbStorage.getUserFeed(userId);
     }
 
-    public void createEvent(int userId, int entityId, FeedDbStorage.EventType type,
-                            FeedDbStorage.OperationType operation){
+    public void createEvent(int userId, int entityId, FeedDbStorage.EventType type, FeedDbStorage.OperationType operation) {
         feedDbStorage.createNewEvent(userId, entityId, type, operation);
     }
 }
