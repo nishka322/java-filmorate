@@ -9,6 +9,8 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.DirectorService;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.feed.EventRowMapper;
+import ru.yandex.practicum.filmorate.storage.feed.FeedDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.DirectorDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
@@ -33,7 +35,9 @@ import static org.junit.jupiter.api.Assertions.*;
         MpaDbStorage.class,
         GenreDbStorage.class,
         DirectorService.class,
-        DirectorDbStorage.class
+        DirectorDbStorage.class,
+        FeedDbStorage.class,
+        EventRowMapper.class
 })
 class FilmControllerTest {
 

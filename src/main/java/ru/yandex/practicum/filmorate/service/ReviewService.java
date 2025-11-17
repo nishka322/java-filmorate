@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Review;
+import ru.yandex.practicum.filmorate.storage.feed.FeedDbStorage;
 import ru.yandex.practicum.filmorate.storage.review.ReviewStorage;
 
 import java.util.List;
@@ -29,6 +30,8 @@ public class ReviewService {
         review.setUseful(0);
         Review created = reviewStorage.create(review);
         log.info("Создан отзыв {} для фильма {} пользователем {}", created.getReviewId(), created.getFilmId(), created.getUserId());
+        userService.createEvent(review.getUserId(), created.getReviewId(), FeedDbStorage.EventType.REVIEW,
+                FeedDbStorage.OperationType.ADD);
         return created;
     }
 
@@ -44,13 +47,17 @@ public class ReviewService {
 
         Review updated = reviewStorage.update(review);
         log.info("Обновлён отзыв {}", updated.getReviewId());
+        userService.createEvent(review.getUserId(), updated.getReviewId(), FeedDbStorage.EventType.REVIEW,
+                FeedDbStorage.OperationType.UPDATE);
         return updated;
     }
 
     public void deleteReview(int id) {
-        getReviewById(id);
+        Review review = getReviewById(id);
         reviewStorage.delete(id);
         log.info("Удалён отзыв {}", id);
+        userService.createEvent(review.getUserId(), review.getReviewId(), FeedDbStorage.EventType.REVIEW,
+                FeedDbStorage.OperationType.REMOVE);
     }
 
     public Review getReviewById(int id) {

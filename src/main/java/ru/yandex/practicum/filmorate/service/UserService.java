@@ -4,8 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.feed.FeedDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -15,11 +17,13 @@ import java.util.stream.Collectors;
 @Service
 public class UserService {
     private final UserStorage userStorage;
+    private final FeedDbStorage feedDbStorage;
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     @Autowired
-    public UserService(UserStorage userStorage) {
+    public UserService(UserStorage userStorage, FeedDbStorage feedDbStorage) {
         this.userStorage = userStorage;
+        this.feedDbStorage = feedDbStorage;
     }
 
     public List<User> getAllUsers() {
@@ -65,6 +69,7 @@ public class UserService {
         UserDbStorage userDbStorage = (UserDbStorage) userStorage;
         userDbStorage.addFriend(userId, friendId, FriendshipStatus.PENDING);
         log.info("Пользователь {} отправил запрос на дружбу пользователю {}", userId, friendId);
+        createEvent(userId, friendId, FeedDbStorage.EventType.FRIEND, FeedDbStorage.OperationType.ADD);
     }
 
     public void confirmFriend(int userId, int friendId) {
@@ -75,6 +80,7 @@ public class UserService {
         UserDbStorage userDbStorage = (UserDbStorage) userStorage;
         userDbStorage.updateFriendshipStatus(friendId, userId, FriendshipStatus.CONFIRMED);
         log.info("Дружба между пользователем {} и пользователем {} подтверждена", userId, friendId);
+        createEvent(userId, friendId, FeedDbStorage.EventType.FRIEND, FeedDbStorage.OperationType.ADD);
     }
 
     public void removeFriend(int userId, int friendId) {
@@ -85,6 +91,7 @@ public class UserService {
         UserDbStorage userDbStorage = (UserDbStorage) userStorage;
         userDbStorage.removeFriend(userId, friendId);
         log.info("Пользователь {} удалил пользователя {} из друзей", userId, friendId);
+        createEvent(userId, friendId, FeedDbStorage.EventType.FRIEND, FeedDbStorage.OperationType.REMOVE);
     }
 
     public List<User> getFriends(int userId) {
@@ -113,5 +120,13 @@ public class UserService {
     public boolean userExists(int id) {
         log.debug("Проверка существования пользователя с id {}", id);
         return userStorage.exists(id);
+    }
+
+    public List<Event> getUserFeed(int userId) {
+        return feedDbStorage.getUserFeed(userId);
+    }
+
+    public void createEvent(int userId, int entityId, FeedDbStorage.EventType type, FeedDbStorage.OperationType operation) {
+        feedDbStorage.createNewEvent(userId, entityId, type, operation);
     }
 }
