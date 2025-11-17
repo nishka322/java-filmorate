@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,13 @@ public class FilmController extends BaseController<Film> {
             log.error("Фильм с id {} не найден", id);
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         }
+    }
+
+    @GetMapping("/common")
+    public List<Film> getFilmByPopularityCommon(@RequestParam(name = "userId") int userId,
+                                                @RequestParam(name = "friendId") int friendId) {
+        log.info("Получен запрос на вывод популярных общих фильмов, {} и {}", userId, friendId);
+        return filmService.getFilmByPopularityCommon(userId, friendId);
     }
 
     @PutMapping("/{id}/like/{userId}")
@@ -116,5 +124,18 @@ public class FilmController extends BaseController<Film> {
                     film.getReleaseDate(), MIN_RELEASE_DATE);
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
+    }
+
+    @GetMapping("/search")
+    public List<Film> searchFilms(@RequestParam String query,
+                                  @RequestParam(defaultValue = "title") String by) {
+        log.info("Поиск фильмов: '{}' по полям: {}", query, by);
+        return filmService.searchFilms(query, by);
+    }
+
+    @GetMapping("/director/{directorId}")
+    public List<Film> getFilmsByDirector(@PathVariable int directorId,
+                                         @RequestParam(defaultValue = "year") String sortBy) {
+        return filmService.getFilmsByDirector(directorId, sortBy);
     }
 }
