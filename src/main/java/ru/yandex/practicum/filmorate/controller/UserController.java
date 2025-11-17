@@ -1,15 +1,15 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
-import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.util.List;
 
@@ -31,8 +31,7 @@ public class UserController extends BaseController<User> {
     }
 
     @GetMapping("/{id}/recommendations")
-    public ResponseEntity<Object> getRecommendations(@PathVariable int id,
-                                                     @RequestParam(name = "count", defaultValue = "10") int count) {
+    public ResponseEntity<Object> getRecommendations(@PathVariable int id, @RequestParam(name = "count", defaultValue = "10") int count) {
         try {
             userService.getUserById(id);
 
@@ -109,8 +108,7 @@ public class UserController extends BaseController<User> {
     public ResponseEntity<Object> getCommonFriends(@PathVariable int id, @PathVariable int otherId) {
         try {
             List<User> commonFriends = userService.getCommonFriends(id, otherId);
-            log.info("Получен запрос на получение общих друзей пользователей {} и {}. Количество общих друзей: {}",
-                    id, otherId, commonFriends.size());
+            log.info("Получен запрос на получение общих друзей пользователей {} и {}. Количество общих друзей: {}", id, otherId, commonFriends.size());
             return ResponseEntity.ok(commonFriends);
         } catch (IllegalArgumentException e) {
             log.error("Ошибка при получении общих друзей: {}", e.getMessage());
@@ -119,9 +117,10 @@ public class UserController extends BaseController<User> {
     }
 
     @GetMapping("/{id}/feed")
-    public ResponseEntity<Object> getUserFeed(@PathVariable int id){
+    public ResponseEntity<Object> getUserFeed(@PathVariable int id) {
         return ResponseEntity.ok(userService.getUserFeed(id));
-      
+    }
+
     @DeleteMapping("/{userId}")
     public ResponseEntity<Object> removeUser(@PathVariable int userId) {
         log.info("Удаляем пользователя с id = {}", userId);
@@ -145,8 +144,7 @@ public class UserController extends BaseController<User> {
     }
 
     @Override
-    protected ResponseEntity<Object>
-    updateEntity(User user) {
+    protected ResponseEntity<Object> updateEntity(User user) {
         log.info("Получен запрос на обновление пользователя: {}", user);
         try {
             validateEntity(user);
