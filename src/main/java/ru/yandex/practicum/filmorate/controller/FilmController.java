@@ -1,13 +1,13 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
+import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.service.FilmService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.service.FilmService;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -51,12 +51,23 @@ public class FilmController extends BaseController<Film> {
         }
     }
 
+    @GetMapping("/common")
+    public List<Film> getFilmByPopularityCommon(@RequestParam(name = "userId") int userId,
+                                                @RequestParam(name = "friendId") int friendId) {
+        log.info("Получен запрос на вывод популярных общих фильмов, {} и {}", userId, friendId);
+        return filmService.getFilmByPopularityCommon(userId, friendId);
+    }
+
     @PutMapping("/{id}/like/{userId}")
     public ResponseEntity<Object> addLike(@PathVariable int id, @PathVariable int userId) {
         try {
             filmService.addLike(id, userId);
             log.info("Пользователь {} поставил лайк фильму {}", userId, id);
-            return ResponseEntity.ok(Map.of("message", "Лайк успешно добавлен", "filmId", id, "userId", userId));
+            return ResponseEntity.ok(Map.of(
+                    "message", "Лайк успешно добавлен",
+                    "filmId", id,
+                    "userId", userId
+            ));
         } catch (IllegalArgumentException e) {
             log.error("Ошибка при добавлении лайка: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
@@ -115,8 +126,22 @@ public class FilmController extends BaseController<Film> {
     @Override
     protected void validateEntity(Film film) throws ValidationException {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
-            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}", film.getReleaseDate(), MIN_RELEASE_DATE);
+            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}",
+                    film.getReleaseDate(), MIN_RELEASE_DATE);
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
+    }
+
+    @GetMapping("/search")
+    public List<Film> searchFilms(@RequestParam String query,
+                                  @RequestParam(defaultValue = "title") String by) {
+        log.info("Поиск фильмов: '{}' по полям: {}", query, by);
+        return filmService.searchFilms(query, by);
+    }
+
+    @GetMapping("/director/{directorId}")
+    public List<Film> getFilmsByDirector(@PathVariable int directorId,
+                                         @RequestParam(defaultValue = "year") String sortBy) {
+        return filmService.getFilmsByDirector(directorId, sortBy);
     }
 }
