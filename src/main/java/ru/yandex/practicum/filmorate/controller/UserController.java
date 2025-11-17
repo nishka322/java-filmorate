@@ -120,6 +120,7 @@ public class UserController extends BaseController<User> {
 
     @DeleteMapping("/{userId}")
     public ResponseEntity<Object> removeUser(@PathVariable int userId) {
+        log.info("Удаляем пользователя с id = {}", userId);
         userService.removeUser(userId);
         return ResponseEntity.ok().build();
     }

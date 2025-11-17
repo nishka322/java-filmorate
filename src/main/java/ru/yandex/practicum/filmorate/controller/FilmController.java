@@ -94,6 +94,7 @@ public class FilmController extends BaseController<Film> {
 
     @DeleteMapping("/{filmId}")
     public ResponseEntity<Object> removeFilm(@PathVariable int filmId) {
+        log.info("Удаляем фильм с id = {}", filmId);
         filmService.removeFilm(filmId);
         return ResponseEntity.ok().build();
     }
