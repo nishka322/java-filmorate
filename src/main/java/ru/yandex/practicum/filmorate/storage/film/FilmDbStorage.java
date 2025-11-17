@@ -172,11 +172,10 @@ public class FilmDbStorage implements FilmStorage {
             return List.of();
         }
         String placeholders = String.join(",", Collections.nCopies(filmsId.size(), "?"));
-        String sql = """
-                SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description
-                FROM films f
-                LEFT JOIN mpa_ratings m ON f.mpa_id = m.id
-                WHERE f.id IN (""" + placeholders + ")";
+        String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description " +
+                "FROM films f " +
+                "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
+                "WHERE f.id IN (" + placeholders + ")";
         List<Film> films = jdbcTemplate.query(sql, this::mapFilm, filmsId.toArray());
 
         if (!films.isEmpty()) {
@@ -271,20 +270,16 @@ public class FilmDbStorage implements FilmStorage {
 
     // Реализация запроса на вывод общих фильмов друзей
     public Set<Integer> getCommonFilms(int userId, int friendId) {
-        String sql = """
-                SELECT DISTINCT l1.film_id
-                FROM likes l1
-                JOIN likes l2 ON l1.film_id = l2.film_id
-                WHERE l1.user_id = ? AND l2.user_id = ?
-                """;
+        String sql = "SELECT DISTINCT l1.film_id " +
+                "FROM likes l1 " +
+                "JOIN likes l2 ON l1.film_id = l2.film_id " +
+                "WHERE l1.user_id = ? AND l2.user_id = ?";
         return new HashSet<>(jdbcTemplate.queryForList(sql, Integer.class, userId, friendId));
     }
 
     @Override
     public Integer getLikeCount(int filmId) {
-        String sql = """
-                SELECT COUNT(*) FROM likes WHERE film_id = ?;
-                """;
+        String sql = "SELECT COUNT(*) FROM likes WHERE film_id = ?";
         return jdbcTemplate.queryForObject(sql, Integer.class, filmId);
     }
 
