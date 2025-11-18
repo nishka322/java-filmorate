@@ -123,6 +123,9 @@ public class UserService {
     }
 
     public List<Event> getUserFeed(int userId) {
+        if (!userExists(userId)) {
+            throw new IllegalArgumentException("Пользователь с id " + userId + " не найден");
+        }
         return feedDbStorage.getUserFeed(userId);
     }
 

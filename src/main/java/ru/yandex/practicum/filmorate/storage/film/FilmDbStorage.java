@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.storage.film;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -212,9 +213,14 @@ public class FilmDbStorage implements FilmStorage {
         return jdbcTemplate.query(sql, this::mapGenre);
     }
 
+
     public void addLike(int filmId, int userId) {
         String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
-        jdbcTemplate.update(sql, filmId, userId);
+        try {
+            jdbcTemplate.update(sql, filmId, userId);
+        } catch (DuplicateKeyException e) {
+            log.debug("Лайк уже существует: filmId={}, userId={}", filmId, userId);
+        }
     }
 
     public void removeLike(int filmId, int userId) {
@@ -362,7 +368,7 @@ public class FilmDbStorage implements FilmStorage {
         return director;
     }
 
-    private void loadDirectorsForFilms(List<Film> films) {
+    public void loadDirectorsForFilms(List<Film> films) {
         if (films.isEmpty()) return;
 
         List<Integer> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
@@ -397,11 +403,10 @@ public class FilmDbStorage implements FilmStorage {
     public List<Film> searchFilms(String query, String searchBy) {
         String searchQuery = "%" + query.toLowerCase() + "%";
 
-        String[] searchParams = searchBy.split(",");
         boolean searchTitle = false;
         boolean searchDirector = false;
 
-        for (String param : searchParams) {
+        for (String param : searchBy.split(",")) {
             if ("title".equals(param.trim())) searchTitle = true;
             if ("director".equals(param.trim())) searchDirector = true;
         }
@@ -411,29 +416,31 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description ")
+        sql.append("SELECT DISTINCT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, ")
+                .append("COUNT(l.user_id) AS likes_count ")
                 .append("FROM films f ")
-                .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ");
+                .append("LEFT JOIN mpa_ratings m ON f.mpa_id = m.id ")
+                .append("LEFT JOIN likes l ON f.id = l.film_id ");
 
         List<Object> params = new ArrayList<>();
 
-        if (searchTitle && searchDirector) {
+        if (searchDirector) {
             sql.append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
-                    .append("LEFT JOIN directors d ON fd.director_id = d.id ")
-                    .append("WHERE LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?) ");
-            params.add(searchQuery);
-            params.add(searchQuery);
-        } else if (searchTitle) {
-            sql.append("WHERE LOWER(f.name) LIKE LOWER(?) ");
-            params.add(searchQuery);
-        } else if (searchDirector) {
-            sql.append("LEFT JOIN film_directors fd ON f.id = fd.film_id ")
-                    .append("LEFT JOIN directors d ON fd.director_id = d.id ")
-                    .append("WHERE LOWER(d.name) LIKE LOWER(?) ");
-            params.add(searchQuery);
+                    .append("LEFT JOIN directors d ON fd.director_id = d.id ");
         }
 
-        sql.append("ORDER BY f.id");
+        sql.append("WHERE ");
+
+        List<String> conditions = new ArrayList<>();
+        if (searchTitle) conditions.add("LOWER(f.name) LIKE LOWER(?)");
+        if (searchDirector) conditions.add("LOWER(d.name) LIKE LOWER(?)");
+        sql.append(String.join(" OR ", conditions));
+
+        if (searchTitle) params.add(searchQuery);
+        if (searchDirector) params.add(searchQuery);
+
+        sql.append(" GROUP BY f.id, m.id, m.name, m.description ")
+                .append(" ORDER BY likes_count DESC");
 
         List<Film> films = jdbcTemplate.query(sql.toString(), (rs, rowNum) -> mapFilm(rs, rowNum), params.toArray());
 

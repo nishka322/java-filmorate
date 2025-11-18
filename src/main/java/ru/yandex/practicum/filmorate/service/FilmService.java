@@ -112,10 +112,8 @@ public class FilmService {
         userService.getUserById(userId);
         getFilmById(filmId);
 
-        if (filmStorage instanceof FilmDbStorage) {
-            FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
-            filmDbStorage.addLike(filmId, userId);
-        }
+        filmDbStorage.addLike(filmId, userId);
+
         userService.createEvent(userId, filmId, FeedDbStorage.EventType.LIKE, FeedDbStorage.OperationType.ADD);
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
@@ -136,9 +134,19 @@ public class FilmService {
     }
 
     public List<Film> getPopularFilms(int count, int genreId, int year) {
-        log.debug("Получение {} популярных фильмов  жанре {} за {} год", count, genreId, year);
-         return filmStorage.getPopular(count, genreId, year);
+        log.debug("Получение {} популярных фильмов в жанре {} за {} год", count, genreId, year);
+
+        List<Film> films = filmStorage.getPopular(count, genreId, year);
+
+        if (!films.isEmpty()) {
+            filmDbStorage.loadGenresForFilms(films);
+            filmDbStorage.loadDirectorsForFilms(films);
+        }
+
+        log.debug("Получено {} популярных фильмов", films.size());
+        return films;
     }
+
 
     public boolean filmExists(int id) {
         log.debug("Проверка существования фильма с id {}", id);
@@ -189,6 +197,8 @@ public class FilmService {
 
     public List<Film> getFilmsByDirector(int directorId, String sortBy) {
         log.debug("Получение фильмов режиссера {} с сортировкой по {}", directorId, sortBy);
+
+        directorService.getDirectorById(directorId);
 
         if (filmStorage instanceof FilmDbStorage filmDbStorage) {
             List<Film> films = filmDbStorage.getFilmsByDirector(directorId, sortBy);
