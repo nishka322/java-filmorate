@@ -21,6 +21,8 @@ import java.util.*;
 
 @Service
 public class FilmService {
+    private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
+
     private final FilmStorage filmStorage;
     private final FilmDbStorage filmDbStorage;
     private final UserService userService;
@@ -280,7 +282,6 @@ public class FilmService {
     }
 
     private void validateFilmReleaseDate(LocalDate releaseDate) {
-        LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
         if (releaseDate.isBefore(MIN_RELEASE_DATE)) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
