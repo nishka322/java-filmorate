@@ -3,7 +3,9 @@ package ru.yandex.practicum.filmorate.model;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -24,4 +26,5 @@ public class Film {
 
     private MpaRating mpa;
     private Set<Genre> genres = new HashSet<>();
+    private List<Director> directors = new ArrayList<>();
 }

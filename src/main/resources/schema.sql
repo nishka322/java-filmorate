@@ -31,6 +31,21 @@ CREATE TABLE IF NOT EXISTS film_genres (
     FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
     );
 
+-- Таблица режиссёров
+CREATE TABLE IF NOT EXISTS directors (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL
+    );
+
+-- Связующая таблица фильмов и режиссёров
+CREATE TABLE IF NOT EXISTS film_directors (
+    film_id INTEGER NOT NULL,
+    director_id INTEGER NOT NULL,
+    PRIMARY KEY (film_id, director_id),
+    FOREIGN KEY (film_id) REFERENCES films(id) ON DELETE CASCADE,
+    FOREIGN KEY (director_id) REFERENCES directors(id) ON DELETE CASCADE
+    );
+
 -- Таблица пользователей
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
@@ -59,5 +74,54 @@ CREATE TABLE IF NOT EXISTS likes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (film_id, user_id),
     FOREIGN KEY (film_id) REFERENCES films(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+-- Таблица типов событий
+CREATE TABLE IF NOT EXISTS event_types (
+    type_id INTEGER PRIMARY KEY,
+    type_name VARCHAR NOT NULL
+);
+
+-- Таблица операций над событиями
+CREATE TABLE IF NOT EXISTS operations (
+    operation_id INTEGER PRIMARY KEY,
+    operation_name VARCHAR NOT NULL
+);
+
+-- Таблица событий
+CREATE TABLE IF NOT EXISTS events (
+    event_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    type_id INTEGER NOT NULL,
+    operation_id INTEGER NOT NULL,
+    entity_id INTEGER NOT NULL,
+    create_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (type_id) REFERENCES event_types(type_id) ON DELETE CASCADE,
+    FOREIGN KEY (operation_id) REFERENCES operations(operation_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Таблица отзывов
+CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    content VARCHAR(1000) NOT NULL,
+    is_positive BOOLEAN NOT NULL,
+    user_id INTEGER NOT NULL,
+    film_id INTEGER NOT NULL,
+    useful INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (film_id) REFERENCES films(id) ON DELETE CASCADE
+    );
+
+-- Таблица реакций на отзывы
+CREATE TABLE IF NOT EXISTS review_likes (
+    review_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    is_positive BOOLEAN NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (review_id, user_id),
+    FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );

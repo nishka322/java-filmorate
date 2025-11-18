@@ -14,3 +14,13 @@ MERGE INTO genres (id, name) VALUES
     (4, 'Триллер'),
     (5, 'Документальный'),
     (6, 'Боевик');
+
+MERGE INTO event_types (type_id, type_name) VALUES
+    (1, 'LIKE'),
+    (2, 'REVIEW'),
+    (3, 'FRIEND');
+
+MERGE INTO operations (operation_id, operation_name) VALUES
+    (1, 'ADD'),
+    (2, 'REMOVE'),
+    (3, 'UPDATE');
