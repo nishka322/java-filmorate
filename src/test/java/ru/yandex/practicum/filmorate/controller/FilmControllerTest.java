@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.ResponseEntity;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.DirectorService;
 import ru.yandex.practicum.filmorate.service.FilmService;
@@ -18,7 +17,6 @@ import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 import org.junit.jupiter.api.BeforeEach;
 import ru.yandex.practicum.filmorate.model.User;
-
 
 import java.time.LocalDate;
 import java.util.List;
@@ -70,39 +68,34 @@ class FilmControllerTest {
     @Test
     public void addFilmValidData() {
         Film film = createValidFilm("Test Film", "Test Description", LocalDate.of(2000, 1, 1), 120);
-        ResponseEntity<Object> response = filmController.addFilm(film);
+        Film createdFilm = filmController.addFilm(film);
 
-        assertEquals(200, response.getStatusCode().value());
-        assertNotNull(response.getBody());
-        Film createdFilm = (Film) response.getBody();
+        assertNotNull(createdFilm);
         assertEquals("Test Film", createdFilm.getName());
+        assertTrue(createdFilm.getId() > 0);
     }
 
     @Test
     public void addFilmInvalidReleaseDate() {
         Film film = createValidFilm("Old Film", "Very old film", LocalDate.of(1890, 1, 1), 90);
 
-        ResponseEntity<Object> response = filmController.addFilm(film);
-
-        assertTrue(response.getStatusCode().is4xxClientError());
+        assertThrows(Exception.class, () -> filmController.addFilm(film));
     }
 
     @Test
     public void updateFilmExistingFilm() {
         Film film = createValidFilm("Original", "Original desc", LocalDate.of(2000, 1, 1), 120);
-        ResponseEntity<Object> createResponse = filmController.addFilm(film);
-        Film createdFilm = (Film) createResponse.getBody();
+        Film createdFilm = filmController.addFilm(film);
 
         Film updatedFilm = createValidFilm("Updated", "Updated desc", LocalDate.of(2001, 1, 1), 150);
-        assertNotNull(createdFilm);
         updatedFilm.setId(createdFilm.getId());
 
-        ResponseEntity<Object> response = filmController.updateFilm(updatedFilm);
+        Film resultFilm = filmController.updateFilm(updatedFilm);
 
-        assertEquals(200, response.getStatusCode().value());
-        Film resultFilm = (Film) response.getBody();
         assertNotNull(resultFilm);
         assertEquals("Updated", resultFilm.getName());
+        assertEquals("Updated desc", resultFilm.getDescription());
+        assertEquals(150, resultFilm.getDuration());
     }
 
     @Test
@@ -110,7 +103,7 @@ class FilmControllerTest {
         Film film = createValidFilm("Non Existing", "Description", LocalDate.of(2000, 1, 1), 120);
         film.setId(999);
 
-        assertThrows(RuntimeException.class, () -> filmController.updateFilm(film));
+        assertThrows(Exception.class, () -> filmController.updateFilm(film));
     }
 
     @Test
@@ -140,13 +133,9 @@ class FilmControllerTest {
         Film film2 = createValidFilm("Film 2", "Desc 2", LocalDate.of(2001, 1, 1), 150);
         Film film3 = createValidFilm("Film 3", "Desc 3", LocalDate.of(2002, 1, 1), 180);
 
-        ResponseEntity<Object> response1 = filmController.addFilm(film1);
-        ResponseEntity<Object> response2 = filmController.addFilm(film2);
-        ResponseEntity<Object> response3 = filmController.addFilm(film3);
-
-        Film result1 = (Film) response1.getBody();
-        Film result2 = (Film) response2.getBody();
-        Film result3 = (Film) response3.getBody();
+        Film result1 = filmController.addFilm(film1);
+        Film result2 = filmController.addFilm(film2);
+        Film result3 = filmController.addFilm(film3);
 
         assertNotNull(result1);
         assertNotNull(result2);
@@ -158,9 +147,9 @@ class FilmControllerTest {
 
     @Test
     void getCommonFilms_sortedByPopularity_desc() {
-        int f1 = ((Film) filmController.addFilm(createValidFilm("F1", "d1", LocalDate.of(2000, 1, 1), 100)).getBody()).getId();
-        int f2 = ((Film) filmController.addFilm(createValidFilm("F2", "d2", LocalDate.of(2001, 1, 1), 110)).getBody()).getId();
-        int f3 = ((Film) filmController.addFilm(createValidFilm("F3", "d3", LocalDate.of(2002, 1, 1), 120)).getBody()).getId();
+        int f1 = filmController.addFilm(createValidFilm("F1", "d1", LocalDate.of(2000, 1, 1), 100)).getId();
+        int f2 = filmController.addFilm(createValidFilm("F2", "d2", LocalDate.of(2001, 1, 1), 110)).getId();
+        int f3 = filmController.addFilm(createValidFilm("F3", "d3", LocalDate.of(2002, 1, 1), 120)).getId();
 
         addLike(f1, userA);
         addLike(f1, userB);
@@ -178,8 +167,8 @@ class FilmControllerTest {
 
     @Test
     void getCommonFilms_noIntersection_returnsEmpty() {
-        int f1 = ((Film) filmController.addFilm(createValidFilm("F1", "d1", LocalDate.of(2000, 1, 1), 100)).getBody()).getId();
-        int f2 = ((Film) filmController.addFilm(createValidFilm("F2", "d2", LocalDate.of(2001, 1, 1), 110)).getBody()).getId();
+        int f1 = filmController.addFilm(createValidFilm("F1", "d1", LocalDate.of(2000, 1, 1), 100)).getId();
+        int f2 = filmController.addFilm(createValidFilm("F2", "d2", LocalDate.of(2001, 1, 1), 110)).getId();
 
         addLike(f1, userA);
         addLike(f2, userB);
@@ -191,7 +180,7 @@ class FilmControllerTest {
 
     @Test
     void getCommonFilms_unknownUser_throws() {
-        assertThrows(RuntimeException.class, () -> filmController.getFilmByPopularityCommon(9999, userB));
+        assertThrows(Exception.class, () -> filmController.getFilmByPopularityCommon(9999, userB));
     }
 
     private int createUser(String email, String login) {
@@ -204,10 +193,8 @@ class FilmControllerTest {
     }
 
     private void addLike(int filmId, int userId) {
-        // если у тебя другой метод/подпись — замени имя вызова
         filmController.addLike(filmId, userId);
     }
-
 
     private Film createValidFilm(String name, String description, LocalDate releaseDate, int duration) {
         Film film = new Film();

@@ -17,6 +17,10 @@ import java.util.Map;
 @Slf4j
 @Repository
 public class FeedDbStorage {
+
+    private final JdbcTemplate jdbc;
+    private final EventRowMapper mapper;
+
     @Autowired
     public FeedDbStorage(JdbcTemplate jdbc, EventRowMapper mapper) {
         this.jdbc = jdbc;
@@ -69,10 +73,6 @@ public class FeedDbStorage {
             return CODE_MAP.get(id);
         }
     }
-
-    private final JdbcTemplate jdbc;
-    private final EventRowMapper mapper;
-
 
     public void createNewEvent(int userId, int entityId, EventType type, OperationType operation) {
         log.info("Data for new event: user_id = {}, entity_id = {}, type = {}, operation = {}", userId, entityId, type, operation);

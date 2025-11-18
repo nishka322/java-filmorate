@@ -1,7 +1,6 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.service.DirectorService;
@@ -13,7 +12,6 @@ import java.util.List;
 public class DirectorController {
     private final DirectorService directorService;
 
-    @Autowired
     public DirectorController(DirectorService directorService) {
         this.directorService = directorService;
     }

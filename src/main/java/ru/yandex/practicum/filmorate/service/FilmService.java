@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.service;
 
+import jakarta.validation.ValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @Service
@@ -56,6 +58,7 @@ public class FilmService {
     }
 
     public Film createFilm(Film film) {
+        validateFilmReleaseDate(film.getReleaseDate());
         log.debug("Создание нового фильма: {}", film.getName());
         if (film.getMpa() != null && film.getMpa().getId() > 0) {
             MpaRating mpa = mpaStorage.getMpaRatingById(film.getMpa().getId()).orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
@@ -84,6 +87,7 @@ public class FilmService {
     }
 
     public Film updateFilm(Film film) {
+        validateFilmReleaseDate(film.getReleaseDate());
         log.debug("Обновление фильма с id {}", film.getId());
 
         Film existingFilm = filmStorage.getById(film.getId()).orElseThrow(() -> new IllegalArgumentException("Фильм с id " + film.getId() + " не найден"));
@@ -273,5 +277,12 @@ public class FilmService {
         List<Integer> topFilmIds = scopeByFilm.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue(), a.getValue())).limit(Math.max(1, limit)).map(Map.Entry::getKey).toList();
 
         return filmDbStorage.getFilmsByIdRestoringOrder(topFilmIds);
+    }
+
+    private void validateFilmReleaseDate(LocalDate releaseDate) {
+        LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
+        if (releaseDate.isBefore(MIN_RELEASE_DATE)) {
+            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
+        }
     }
 }
